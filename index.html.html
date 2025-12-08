@@ -277,6 +277,72 @@
             gap: 15px;
             align-items: end;
             flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .rider-history {
+            background: white;
+            border: 2px solid #ff8c42;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .rider-history h3 {
+            color: #ff5722;
+            margin-bottom: 15px;
+        }
+
+        .rider-entry {
+            background: #fff5f2;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #ff5722;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rider-info {
+            flex: 1;
+        }
+
+        .rider-info strong {
+            color: #ff5722;
+        }
+
+        .edit-rider-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-right: 5px;
+            transition: all 0.3s;
+        }
+
+        .edit-rider-btn:hover {
+            background: #1976D2;
+            transform: scale(1.05);
+        }
+
+        .delete-rider-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .delete-rider-btn:hover {
+            background: #d32f2f;
+            transform: scale(1.05);
         }
 
         @media (max-width: 768px) {
@@ -367,6 +433,7 @@
             <div class="rider-cost-section">
                 <h2>Daily Rider Cost</h2>
                 <form id="riderCostForm" class="rider-form">
+                    <input type="hidden" id="editRiderDate">
                     <div class="form-group">
                         <label for="riderDate">Date</label>
                         <input type="date" id="riderDate" required>
@@ -375,8 +442,10 @@
                         <label for="riderCost">Rider Cost (₹)</label>
                         <input type="number" id="riderCost" step="0.01" placeholder="0.00" required>
                     </div>
-                    <button type="submit" class="btn">Save Rider Cost</button>
+                    <button type="submit" class="btn" id="riderSubmitBtn">Save Rider Cost</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelRiderEdit()" id="cancelRiderBtn" style="display: none;">Cancel</button>
                 </form>
+                <div id="riderHistoryContainer"></div>
             </div>
 
             <div class="filter-section">
@@ -444,7 +513,9 @@
     <script>
         let salesData = [];
         let riderCosts = {};
+        let riderDetails = {};
         let currentFilters = { date: '', restro: '' };
+        let editingRiderDate = null;
 
         function calculateProfit() {
             const totalAmount = parseFloat(document.getElementById('totalAmount').value) || 0;
@@ -474,13 +545,20 @@
             if (storedRiderCosts) {
                 riderCosts = JSON.parse(storedRiderCosts);
             }
+            const storedRiderDetails = localStorage.getItem('riderDetails');
+            if (storedRiderDetails) {
+                riderDetails = JSON.parse(storedRiderDetails);
+            }
             updateDisplay();
+            displayRiderSummary();
         }
 
         function saveData() {
             localStorage.setItem('salesData', JSON.stringify(salesData));
             localStorage.setItem('riderCosts', JSON.stringify(riderCosts));
+            localStorage.setItem('riderDetails', JSON.stringify(riderDetails));
             updateDisplay();
+            displayRiderSummary();
         }
 
         document.getElementById('salesForm').addEventListener('submit', function(e) {
@@ -522,15 +600,80 @@
 
         document.getElementById('riderCostForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            const editDate = document.getElementById('editRiderDate').value;
             const date = document.getElementById('riderDate').value;
             const cost = parseFloat(document.getElementById('riderCost').value);
             
-            riderCosts[date] = cost;
+            // If editing, use the edit date, otherwise use the new date
+            const finalDate = editDate || date;
+            
+            riderCosts[finalDate] = cost;
             saveData();
             this.reset();
+            document.getElementById('editRiderDate').value = '';
             document.getElementById('riderDate').valueAsDate = new Date();
+            document.getElementById('riderSubmitBtn').textContent = 'Save Rider Cost';
+            document.getElementById('cancelRiderBtn').style.display = 'none';
             alert('Rider cost saved successfully!');
         });
+
+        function editRiderCost(date) {
+            const cost = riderCosts[date];
+            document.getElementById('editRiderDate').value = date;
+            document.getElementById('riderDate').value = date;
+            document.getElementById('riderCost').value = cost;
+            document.getElementById('riderSubmitBtn').textContent = 'Update Rider Cost';
+            document.getElementById('cancelRiderBtn').style.display = 'inline-block';
+            
+            // Scroll to form
+            document.getElementById('riderCostForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelRiderEdit() {
+            document.getElementById('riderCostForm').reset();
+            document.getElementById('editRiderDate').value = '';
+            document.getElementById('riderDate').valueAsDate = new Date();
+            document.getElementById('riderSubmitBtn').textContent = 'Save Rider Cost';
+            document.getElementById('cancelRiderBtn').style.display = 'none';
+        }
+
+        function deleteRiderCost(date) {
+            if (confirm(`Are you sure you want to delete rider cost for ${date}?`)) {
+                delete riderCosts[date];
+                saveData();
+            }
+        }
+
+        function displayRiderHistory() {
+            const container = document.getElementById('riderHistoryContainer');
+            
+            if (Object.keys(riderCosts).length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let historyHTML = '<div class="rider-history"><h3>📋 Rider Cost History</h3>';
+
+            const sortedDates = Object.keys(riderCosts).sort((a, b) => new Date(b) - new Date(a));
+
+            sortedDates.forEach(date => {
+                const cost = riderCosts[date];
+                historyHTML += `
+                    <div class="rider-entry">
+                        <div class="rider-info">
+                            <strong>📅 ${date}</strong> - <span style="color: #ff5722; font-weight: bold;">₹${cost.toFixed(2)}</span>
+                        </div>
+                        <div>
+                            <button class="edit-rider-btn" onclick="editRiderCost('${date}')">Edit</button>
+                            <button class="delete-rider-btn" onclick="deleteRiderCost('${date}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            historyHTML += '</div>';
+            container.innerHTML = historyHTML;
+        }
 
         function editEntry(id) {
             const entry = salesData.find(item => item.id === id);
@@ -683,13 +826,27 @@
                 return;
             }
 
-            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit,Rider Cost,Net Profit\n';
+            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit\n';
             
             salesData.forEach(entry => {
                 const transFeesAmount = (entry.itemPrice * entry.transactionFees) / 100;
-                const riderCost = riderCosts[entry.date] || 0;
-                const netProfit = entry.profit - riderCost;
-                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)},${riderCost.toFixed(2)},${netProfit.toFixed(2)}\n`;
+                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)}\n`;
+            });
+
+            // Add rider summary
+            csv += '\n\nRider Details\n';
+            csv += 'Date,Rider Name,Wage,Total Riders,Total Cost\n';
+            
+            Object.keys(riderDetails).sort().forEach(date => {
+                const riders = riderDetails[date];
+                const totalCost = riderCosts[date] || 0;
+                riders.forEach((rider, index) => {
+                    if (index === 0) {
+                        csv += `${date},${rider.name},${rider.wage.toFixed(2)},${riders.length},${totalCost.toFixed(2)}\n`;
+                    } else {
+                        csv += `,${rider.name},${rider.wage.toFixed(2)},,\n`;
+                    }
+                });
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -707,6 +864,7 @@
             if (confirm('Are you sure you want to clear all data? This cannot be undone!')) {
                 salesData = [];
                 riderCosts = {};
+                riderDetails = {};
                 saveData();
             }
         }
