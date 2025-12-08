@@ -706,25 +706,28 @@
             riderCosts[date] = totalCost;
             
             saveData();
-            cancelRiderForm();
+            editingRiderDate = null;
+            displayRiderSummary();
             alert('Rider details saved successfully!');
         }
 
         function cancelRiderForm() {
             document.getElementById('riderDetailsContainer').innerHTML = '';
             editingRiderDate = null;
+            displayRiderSummary();
         }
 
         function displayRiderSummary() {
+            if (editingRiderDate) return; // Don't show summary if editing
+            
             const container = document.getElementById('riderDetailsContainer');
             
-            if (Object.keys(riderDetails).length === 0 && !editingRiderDate) {
+            if (Object.keys(riderDetails).length === 0) {
+                container.innerHTML = '<div class="no-data" style="padding: 20px;">No rider records yet. Add riders above!</div>';
                 return;
             }
 
-            if (editingRiderDate) return; // Don't show summary if editing
-
-            let summaryHTML = '<div class="rider-summary"><h3>Rider Records</h3><div class="rider-list">';
+            let summaryHTML = '<div class="rider-summary"><h3>📋 Rider Records History</h3><div class="rider-list">';
 
             const sortedDates = Object.keys(riderDetails).sort((a, b) => new Date(b) - new Date(a));
 
@@ -735,9 +738,9 @@
                 summaryHTML += `
                     <div class="rider-entry">
                         <div class="rider-info">
-                            <strong>${date}</strong> - ${riders.length} Rider(s) - Total: ₹${totalCost.toFixed(2)}
-                            <div style="margin-top: 5px; font-size: 0.9em;">
-                                ${riders.map(r => `${r.name} (₹${r.wage.toFixed(2)})`).join(', ')}
+                            <strong>📅 ${date}</strong> - ${riders.length} Rider(s) - <strong style="color: #ff5722;">Total: ₹${totalCost.toFixed(2)}</strong>
+                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                ${riders.map(r => `<span style="background: #ffe0d6; padding: 4px 8px; border-radius: 4px; margin-right: 8px; display: inline-block; margin-bottom: 4px;">👤 ${r.name}: ₹${r.wage.toFixed(2)}</span>`).join('')}
                             </div>
                         </div>
                         <div>
