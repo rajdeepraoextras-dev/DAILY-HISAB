@@ -277,97 +277,6 @@
             gap: 15px;
             align-items: end;
             flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .rider-details-form {
-            background: white;
-            border: 2px solid #ff8c42;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .rider-details-form h3 {
-            color: #ff5722;
-            margin-bottom: 15px;
-        }
-
-        .rider-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .rider-item {
-            background: #fff5f2;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ffccbc;
-        }
-
-        .rider-item h4 {
-            color: #ff5722;
-            margin-bottom: 10px;
-            font-size: 1em;
-        }
-
-        .rider-summary {
-            background: white;
-            border: 2px solid #ff8c42;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
-        }
-
-        .rider-summary h3 {
-            color: #ff5722;
-            margin-bottom: 10px;
-        }
-
-        .rider-list {
-            margin-top: 15px;
-        }
-
-        .rider-entry {
-            background: #fff5f2;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border-left: 4px solid #ff5722;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .rider-info {
-            flex: 1;
-        }
-
-        .rider-info strong {
-            color: #ff5722;
-        }
-
-        .edit-rider-btn {
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.85em;
-            margin-right: 5px;
-        }
-
-        .delete-rider-btn {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.85em;
         }
 
         @media (max-width: 768px) {
@@ -456,19 +365,18 @@
             </div>
 
             <div class="rider-cost-section">
-                <h2>Daily Rider Management</h2>
+                <h2>Daily Rider Cost</h2>
                 <form id="riderCostForm" class="rider-form">
                     <div class="form-group">
                         <label for="riderDate">Date</label>
                         <input type="date" id="riderDate" required>
                     </div>
                     <div class="form-group">
-                        <label for="numRiders">Number of Riders</label>
-                        <input type="number" id="numRiders" min="1" placeholder="0" required>
+                        <label for="riderCost">Rider Cost (₹)</label>
+                        <input type="number" id="riderCost" step="0.01" placeholder="0.00" required>
                     </div>
-                    <button type="submit" class="btn">Add Riders</button>
+                    <button type="submit" class="btn">Save Rider Cost</button>
                 </form>
-                <div id="riderDetailsContainer"></div>
             </div>
 
             <div class="filter-section">
@@ -536,9 +444,7 @@
     <script>
         let salesData = [];
         let riderCosts = {};
-        let riderDetails = {};
         let currentFilters = { date: '', restro: '' };
-        let editingRiderDate = null;
 
         function calculateProfit() {
             const totalAmount = parseFloat(document.getElementById('totalAmount').value) || 0;
@@ -568,20 +474,13 @@
             if (storedRiderCosts) {
                 riderCosts = JSON.parse(storedRiderCosts);
             }
-            const storedRiderDetails = localStorage.getItem('riderDetails');
-            if (storedRiderDetails) {
-                riderDetails = JSON.parse(storedRiderDetails);
-            }
             updateDisplay();
-            displayRiderSummary();
         }
 
         function saveData() {
             localStorage.setItem('salesData', JSON.stringify(salesData));
             localStorage.setItem('riderCosts', JSON.stringify(riderCosts));
-            localStorage.setItem('riderDetails', JSON.stringify(riderDetails));
             updateDisplay();
-            displayRiderSummary();
         }
 
         document.getElementById('salesForm').addEventListener('submit', function(e) {
@@ -624,196 +523,14 @@
         document.getElementById('riderCostForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const date = document.getElementById('riderDate').value;
-            const numRiders = parseInt(document.getElementById('numRiders').value);
+            const cost = parseFloat(document.getElementById('riderCost').value);
             
-            if (!numRiders || numRiders < 1) {
-                alert('Please enter a valid number of riders (at least 1)');
-                return;
-            }
-            
-            editingRiderDate = date;
-            showRiderDetailsForm(date, numRiders);
-            this.reset();
-            document.getElementById('riderDate').value = date;
-        });
-
-        function showRiderDetailsForm(date, numRiders) {
-            const container = document.getElementById('riderDetailsContainer');
-            const existingData = riderDetails[date] || [];
-            
-            let formHTML = `
-                <div class="rider-details-form">
-                    <h3>Enter Details for ${numRiders} Rider(s) on ${date}</h3>
-                    <div class="rider-grid">
-            `;
-
-            for (let i = 0; i < numRiders; i++) {
-                const rider = existingData[i] || { name: '', wage: '' };
-                formHTML += `
-                    <div class="rider-item">
-                        <h4>Rider ${i + 1}</h4>
-                        <div class="form-group">
-                            <label>Name</label>
-                            <input type="text" class="rider-name" value="${rider.name}" placeholder="Enter name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Wage (₹)</label>
-                            <input type="number" class="rider-wage" value="${rider.wage}" step="0.01" placeholder="0.00" required>
-                        </div>
-                    </div>
-                `;
-            }
-
-            formHTML += `
-                    </div>
-                    <div style="margin-top: 15px;">
-                        <button type="button" class="btn" onclick="saveRiderDetailsFromForm('${date}')">Save All Riders</button>
-                        <button type="button" class="btn btn-secondary" onclick="cancelRiderForm()">Cancel</button>
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = formHTML;
-        }
-
-        function saveRiderDetailsFromForm(date) {
-            const names = document.querySelectorAll('.rider-name');
-            const wages = document.querySelectorAll('.rider-wage');
-            
-            const riders = [];
-            let totalCost = 0;
-            let allValid = true;
-
-            for (let i = 0; i < names.length; i++) {
-                const name = names[i].value.trim();
-                const wage = parseFloat(wages[i].value);
-                
-                if (!name || !wage || wage <= 0) {
-                    allValid = false;
-                    break;
-                }
-                
-                riders.push({ name, wage });
-                totalCost += wage;
-            }
-
-            if (!allValid) {
-                alert('Please fill in all rider names and wages correctly!');
-                return;
-            }
-
-            riderDetails[date] = riders;
-            riderCosts[date] = totalCost;
-            
+            riderCosts[date] = cost;
             saveData();
-            editingRiderDate = null;
-            displayRiderSummary();
-            alert('Rider details saved successfully!');
-        }
-
-        function cancelRiderForm() {
-            document.getElementById('riderDetailsContainer').innerHTML = '';
-            editingRiderDate = null;
-            displayRiderSummary();
-        }
-
-        function displayRiderSummary() {
-            if (editingRiderDate) return; // Don't show summary if editing
-            
-            const container = document.getElementById('riderDetailsContainer');
-            
-            // Check if there are old rider costs without details
-            const hasOldData = Object.keys(riderCosts).some(date => !riderDetails[date]);
-            
-            if (Object.keys(riderDetails).length === 0 && !hasOldData) {
-                container.innerHTML = '<div class="no-data" style="padding: 20px;">No rider records yet. Add riders above!</div>';
-                return;
-            }
-
-            let summaryHTML = '<div class="rider-summary">';
-            
-            // Show old rider costs (from previous version) if any
-            if (hasOldData) {
-                summaryHTML += '<h3 style="color: #f44336;">⚠️ Old Rider Costs (No Details)</h3>';
-                summaryHTML += '<div class="rider-list" style="margin-bottom: 20px;">';
-                
-                Object.keys(riderCosts).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
-                    if (!riderDetails[date]) {
-                        const cost = riderCosts[date];
-                        summaryHTML += `
-                            <div class="rider-entry" style="background: #ffebee;">
-                                <div class="rider-info">
-                                    <strong>📅 ${date}</strong> - <strong style="color: #f44336;">Total Cost: ₹${cost.toFixed(2)}</strong>
-                                    <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
-                                        (Old format - no rider details available)
-                                    </div>
-                                </div>
-                                <div>
-                                    <button class="delete-rider-btn" onclick="deleteOldRiderCost('${date}')">Delete</button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                summaryHTML += '</div>';
-            }
-            
-            // Show new detailed rider records
-            if (Object.keys(riderDetails).length > 0) {
-                summaryHTML += '<h3>📋 Rider Records History</h3><div class="rider-list">';
-
-                const sortedDates = Object.keys(riderDetails).sort((a, b) => new Date(b) - new Date(a));
-
-                sortedDates.forEach(date => {
-                    const riders = riderDetails[date];
-                    const totalCost = riderCosts[date] || 0;
-
-                    summaryHTML += `
-                        <div class="rider-entry">
-                            <div class="rider-info">
-                                <strong>📅 ${date}</strong> - ${riders.length} Rider(s) - <strong style="color: #ff5722;">Total: ₹${totalCost.toFixed(2)}</strong>
-                                <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
-                                    ${riders.map(r => `<span style="background: #ffe0d6; padding: 4px 8px; border-radius: 4px; margin-right: 8px; display: inline-block; margin-bottom: 4px;">👤 ${r.name}: ₹${r.wage.toFixed(2)}</span>`).join('')}
-                                </div>
-                            </div>
-                            <div>
-                                <button class="edit-rider-btn" onclick="editRiderEntry('${date}')">Edit</button>
-                                <button class="delete-rider-btn" onclick="deleteRiderEntry('${date}')">Delete</button>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                summaryHTML += '</div>';
-            }
-            
-            summaryHTML += '</div>';
-            container.innerHTML = summaryHTML;
-        }
-
-        function deleteOldRiderCost(date) {
-            if (confirm(`Are you sure you want to delete the old rider cost for ${date}?`)) {
-                delete riderCosts[date];
-                saveData();
-            }
-        }
-
-        function editRiderEntry(date) {
-            const riders = riderDetails[date];
-            document.getElementById('riderDate').value = date;
-            document.getElementById('numRiders').value = riders.length;
-            editingRiderDate = date;
-            showRiderDetailsForm(date, riders.length);
-        }
-
-        function deleteRiderEntry(date) {
-            if (confirm(`Are you sure you want to delete rider records for ${date}?`)) {
-                delete riderDetails[date];
-                delete riderCosts[date];
-                saveData();
-            }
-        }
+            this.reset();
+            document.getElementById('riderDate').valueAsDate = new Date();
+            alert('Rider cost saved successfully!');
+        });
 
         function editEntry(id) {
             const entry = salesData.find(item => item.id === id);
@@ -966,27 +683,13 @@
                 return;
             }
 
-            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit\n';
+            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit,Rider Cost,Net Profit\n';
             
             salesData.forEach(entry => {
                 const transFeesAmount = (entry.itemPrice * entry.transactionFees) / 100;
-                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)}\n`;
-            });
-
-            // Add rider summary
-            csv += '\n\nRider Details\n';
-            csv += 'Date,Rider Name,Wage,Total Riders,Total Cost\n';
-            
-            Object.keys(riderDetails).sort().forEach(date => {
-                const riders = riderDetails[date];
-                const totalCost = riderCosts[date] || 0;
-                riders.forEach((rider, index) => {
-                    if (index === 0) {
-                        csv += `${date},${rider.name},${rider.wage.toFixed(2)},${riders.length},${totalCost.toFixed(2)}\n`;
-                    } else {
-                        csv += `,${rider.name},${rider.wage.toFixed(2)},,\n`;
-                    }
-                });
+                const riderCost = riderCosts[entry.date] || 0;
+                const netProfit = entry.profit - riderCost;
+                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)},${riderCost.toFixed(2)},${netProfit.toFixed(2)}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -1004,7 +707,6 @@
             if (confirm('Are you sure you want to clear all data? This cannot be undone!')) {
                 salesData = [];
                 riderCosts = {};
-                riderDetails = {};
                 saveData();
             }
         }
