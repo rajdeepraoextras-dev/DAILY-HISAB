@@ -722,37 +722,81 @@
             
             const container = document.getElementById('riderDetailsContainer');
             
-            if (Object.keys(riderDetails).length === 0) {
+            // Check if there are old rider costs without details
+            const hasOldData = Object.keys(riderCosts).some(date => !riderDetails[date]);
+            
+            if (Object.keys(riderDetails).length === 0 && !hasOldData) {
                 container.innerHTML = '<div class="no-data" style="padding: 20px;">No rider records yet. Add riders above!</div>';
                 return;
             }
 
-            let summaryHTML = '<div class="rider-summary"><h3>📋 Rider Records History</h3><div class="rider-list">';
+            let summaryHTML = '<div class="rider-summary">';
+            
+            // Show old rider costs (from previous version) if any
+            if (hasOldData) {
+                summaryHTML += '<h3 style="color: #f44336;">⚠️ Old Rider Costs (No Details)</h3>';
+                summaryHTML += '<div class="rider-list" style="margin-bottom: 20px;">';
+                
+                Object.keys(riderCosts).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
+                    if (!riderDetails[date]) {
+                        const cost = riderCosts[date];
+                        summaryHTML += `
+                            <div class="rider-entry" style="background: #ffebee;">
+                                <div class="rider-info">
+                                    <strong>📅 ${date}</strong> - <strong style="color: #f44336;">Total Cost: ₹${cost.toFixed(2)}</strong>
+                                    <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                        (Old format - no rider details available)
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="delete-rider-btn" onclick="deleteOldRiderCost('${date}')">Delete</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                summaryHTML += '</div>';
+            }
+            
+            // Show new detailed rider records
+            if (Object.keys(riderDetails).length > 0) {
+                summaryHTML += '<h3>📋 Rider Records History</h3><div class="rider-list">';
 
-            const sortedDates = Object.keys(riderDetails).sort((a, b) => new Date(b) - new Date(a));
+                const sortedDates = Object.keys(riderDetails).sort((a, b) => new Date(b) - new Date(a));
 
-            sortedDates.forEach(date => {
-                const riders = riderDetails[date];
-                const totalCost = riderCosts[date] || 0;
+                sortedDates.forEach(date => {
+                    const riders = riderDetails[date];
+                    const totalCost = riderCosts[date] || 0;
 
-                summaryHTML += `
-                    <div class="rider-entry">
-                        <div class="rider-info">
-                            <strong>📅 ${date}</strong> - ${riders.length} Rider(s) - <strong style="color: #ff5722;">Total: ₹${totalCost.toFixed(2)}</strong>
-                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
-                                ${riders.map(r => `<span style="background: #ffe0d6; padding: 4px 8px; border-radius: 4px; margin-right: 8px; display: inline-block; margin-bottom: 4px;">👤 ${r.name}: ₹${r.wage.toFixed(2)}</span>`).join('')}
+                    summaryHTML += `
+                        <div class="rider-entry">
+                            <div class="rider-info">
+                                <strong>📅 ${date}</strong> - ${riders.length} Rider(s) - <strong style="color: #ff5722;">Total: ₹${totalCost.toFixed(2)}</strong>
+                                <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                    ${riders.map(r => `<span style="background: #ffe0d6; padding: 4px 8px; border-radius: 4px; margin-right: 8px; display: inline-block; margin-bottom: 4px;">👤 ${r.name}: ₹${r.wage.toFixed(2)}</span>`).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <button class="edit-rider-btn" onclick="editRiderEntry('${date}')">Edit</button>
+                                <button class="delete-rider-btn" onclick="deleteRiderEntry('${date}')">Delete</button>
                             </div>
                         </div>
-                        <div>
-                            <button class="edit-rider-btn" onclick="editRiderEntry('${date}')">Edit</button>
-                            <button class="delete-rider-btn" onclick="deleteRiderEntry('${date}')">Delete</button>
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
 
-            summaryHTML += '</div></div>';
+                summaryHTML += '</div>';
+            }
+            
+            summaryHTML += '</div>';
             container.innerHTML = summaryHTML;
+        }
+
+        function deleteOldRiderCost(date) {
+            if (confirm(`Are you sure you want to delete the old rider cost for ${date}?`)) {
+                delete riderCosts[date];
+                saveData();
+            }
         }
 
         function editRiderEntry(date) {
