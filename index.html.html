@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -122,6 +122,27 @@
             margin-left: 10px;
         }
 
+        .filter-section {
+            background: #fff5f2;
+            border: 2px solid #ff8c42;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .filter-section h3 {
+            color: #ff5722;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
         .data-section {
             margin-top: 30px;
         }
@@ -134,7 +155,7 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -175,14 +196,15 @@
         }
 
         th, td {
-            padding: 15px;
+            padding: 12px;
             text-align: left;
+            font-size: 0.9em;
         }
 
         th {
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
 
         tbody tr {
@@ -194,19 +216,32 @@
             background: #fff5f2;
         }
 
-        .delete-btn {
-            background: #f44336;
+        .delete-btn, .edit-btn {
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.85em;
             transition: all 0.3s;
+            margin-right: 5px;
+        }
+
+        .delete-btn {
+            background: #f44336;
         }
 
         .delete-btn:hover {
             background: #d32f2f;
+            transform: scale(1.05);
+        }
+
+        .edit-btn {
+            background: #2196F3;
+        }
+
+        .edit-btn:hover {
+            background: #1976D2;
             transform: scale(1.05);
         }
 
@@ -223,8 +258,29 @@
             flex-wrap: wrap;
         }
 
+        .rider-cost-section {
+            background: #fff5f2;
+            border: 2px solid #ff8c42;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .rider-cost-section h2 {
+            color: #ff5722;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .rider-form {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 768px) {
-            .form-grid {
+            .form-grid, .filter-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -234,6 +290,11 @@
             
             .btn-secondary {
                 margin-left: 0;
+            }
+
+            th, td {
+                padding: 8px;
+                font-size: 0.8em;
             }
         }
     </style>
@@ -246,8 +307,9 @@
 
         <div class="content">
             <div class="form-section">
-                <h2>New Sale</h2>
+                <h2 id="formTitle">New Sale</h2>
                 <form id="salesForm">
+                    <input type="hidden" id="editId">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="date">Date</label>
@@ -294,11 +356,54 @@
                         </div>
                     </div>
                     <div class="button-group">
-                        <button type="submit" class="btn">Add Entry</button>
+                        <button type="submit" class="btn" id="submitBtn">Add Entry</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
                         <button type="button" class="btn btn-secondary" onclick="exportToCSV()">Export to CSV</button>
                         <button type="button" class="btn btn-secondary" onclick="clearAllData()">Clear All Data</button>
                     </div>
                 </form>
+            </div>
+
+            <div class="rider-cost-section">
+                <h2>Daily Rider Cost</h2>
+                <form id="riderCostForm" class="rider-form">
+                    <div class="form-group">
+                        <label for="riderDate">Date</label>
+                        <input type="date" id="riderDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="riderCost">Rider Cost (₹)</label>
+                        <input type="number" id="riderCost" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <button type="submit" class="btn">Save Rider Cost</button>
+                </form>
+            </div>
+
+            <div class="filter-section">
+                <h3>🔍 Filter Sales</h3>
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="filterDate">Filter by Date</label>
+                        <input type="date" id="filterDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="filterRestro">Filter by Restaurant</label>
+                        <select id="filterRestro">
+                            <option value="">All Restaurants</option>
+                            <option value="Deep Handi Mutton">Deep Handi Mutton</option>
+                            <option value="7 Star">7 Star</option>
+                            <option value="Ethens">Ethens</option>
+                            <option value="Royal Cafe">Royal Cafe</option>
+                            <option value="Verma Ji Non Veg Restaurant">Verma Ji Non Veg Restaurant</option>
+                            <option value="Maa Vaishno Sweets & Bakers">Maa Vaishno Sweets & Bakers</option>
+                            <option value="Rajshahi">Rajshahi</option>
+                            <option value="Shiva Muradabadi Chicken Biryani">Shiva Muradabadi Chicken Biryani</option>
+                            <option value="Raju Handi Meat">Raju Handi Meat</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
             </div>
 
             <div class="data-section">
@@ -313,8 +418,16 @@
                         <p id="totalSales">₹0.00</p>
                     </div>
                     <div class="stat-card">
-                        <h3>Total Profit</h3>
+                        <h3>Gross Profit</h3>
                         <p id="totalProfit">₹0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Rider Cost</h3>
+                        <p id="totalRiderCost">₹0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Net Profit</h3>
+                        <p id="netProfit">₹0.00</p>
                     </div>
                     <div class="stat-card">
                         <h3>Avg Profit Margin</h3>
@@ -330,6 +443,8 @@
 
     <script>
         let salesData = [];
+        let riderCosts = {};
+        let currentFilters = { date: '', restro: '' };
 
         function calculateProfit() {
             const totalAmount = parseFloat(document.getElementById('totalAmount').value) || 0;
@@ -338,14 +453,8 @@
             const customerPlatformFees = parseFloat(document.getElementById('customerPlatformFees').value) || 0;
             const restroPlatformFees = parseFloat(document.getElementById('restroPlatformFees').value) || 2;
 
-            // Calculate transaction fees from item price
             const transactionFeesAmount = (itemPrice * transactionFeesPercent) / 100;
-            
-            // Total Platform Fees = Customer Platform Fees + Restro Platform Fees
             const totalPlatformFees = customerPlatformFees + restroPlatformFees;
-            
-            // Profit = Total Amount - Item Price - Transaction Fees + Total Platform Fees
-            // Note: Customer platform fees is already in Total Amount, so we add both platform fees
             const profit = totalAmount - itemPrice - transactionFeesAmount + totalPlatformFees;
             
             document.getElementById('profit').value = profit.toFixed(2);
@@ -361,19 +470,25 @@
             if (stored) {
                 salesData = JSON.parse(stored);
             }
+            const storedRiderCosts = localStorage.getItem('riderCosts');
+            if (storedRiderCosts) {
+                riderCosts = JSON.parse(storedRiderCosts);
+            }
             updateDisplay();
         }
 
         function saveData() {
             localStorage.setItem('salesData', JSON.stringify(salesData));
+            localStorage.setItem('riderCosts', JSON.stringify(riderCosts));
             updateDisplay();
         }
 
         document.getElementById('salesForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            const editId = document.getElementById('editId').value;
             const entry = {
-                id: Date.now(),
+                id: editId ? parseInt(editId) : Date.now(),
                 date: document.getElementById('date').value,
                 restro: document.getElementById('restro').value,
                 totalAmount: parseFloat(document.getElementById('totalAmount').value),
@@ -384,15 +499,69 @@
                 profit: parseFloat(document.getElementById('profit').value)
             };
 
-            salesData.push(entry);
+            if (editId) {
+                const index = salesData.findIndex(item => item.id === parseInt(editId));
+                if (index !== -1) {
+                    salesData[index] = entry;
+                }
+            } else {
+                salesData.push(entry);
+            }
+
             saveData();
             this.reset();
+            document.getElementById('editId').value = '';
             document.getElementById('date').valueAsDate = new Date();
             document.getElementById('transactionFees').value = '0';
             document.getElementById('customerPlatformFees').value = '0';
             document.getElementById('restroPlatformFees').value = '2';
             document.getElementById('profit').value = '';
+            document.getElementById('formTitle').textContent = 'New Sale';
+            document.getElementById('submitBtn').textContent = 'Add Entry';
         });
+
+        document.getElementById('riderCostForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('riderDate').value;
+            const cost = parseFloat(document.getElementById('riderCost').value);
+            
+            riderCosts[date] = cost;
+            saveData();
+            this.reset();
+            document.getElementById('riderDate').valueAsDate = new Date();
+            alert('Rider cost saved successfully!');
+        });
+
+        function editEntry(id) {
+            const entry = salesData.find(item => item.id === id);
+            if (!entry) return;
+
+            document.getElementById('editId').value = entry.id;
+            document.getElementById('date').value = entry.date;
+            document.getElementById('restro').value = entry.restro;
+            document.getElementById('totalAmount').value = entry.totalAmount;
+            document.getElementById('itemPrice').value = entry.itemPrice;
+            document.getElementById('transactionFees').value = entry.transactionFees;
+            document.getElementById('customerPlatformFees').value = entry.customerPlatformFees;
+            document.getElementById('restroPlatformFees').value = entry.restroPlatformFees;
+            document.getElementById('profit').value = entry.profit;
+            
+            document.getElementById('formTitle').textContent = 'Edit Sale';
+            document.getElementById('submitBtn').textContent = 'Update Entry';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            document.getElementById('salesForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('transactionFees').value = '0';
+            document.getElementById('customerPlatformFees').value = '0';
+            document.getElementById('restroPlatformFees').value = '2';
+            document.getElementById('profit').value = '';
+            document.getElementById('formTitle').textContent = 'New Sale';
+            document.getElementById('submitBtn').textContent = 'Add Entry';
+        }
 
         function deleteEntry(id) {
             if (confirm('Are you sure you want to delete this entry?')) {
@@ -401,13 +570,41 @@
             }
         }
 
+        function applyFilters() {
+            currentFilters.date = document.getElementById('filterDate').value;
+            currentFilters.restro = document.getElementById('filterRestro').value;
+            updateDisplay();
+        }
+
+        function clearFilters() {
+            currentFilters = { date: '', restro: '' };
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterRestro').value = '';
+            updateDisplay();
+        }
+
+        function getFilteredData() {
+            let filtered = [...salesData];
+            
+            if (currentFilters.date) {
+                filtered = filtered.filter(entry => entry.date === currentFilters.date);
+            }
+            
+            if (currentFilters.restro) {
+                filtered = filtered.filter(entry => entry.restro === currentFilters.restro);
+            }
+            
+            return filtered;
+        }
+
         function updateDisplay() {
             const container = document.getElementById('tableContainer');
+            const filteredData = getFilteredData();
             
-            if (salesData.length === 0) {
-                container.innerHTML = '<div class="no-data">No sales data yet. Add your first entry above!</div>';
+            if (filteredData.length === 0) {
+                container.innerHTML = '<div class="no-data">No sales data found for the selected filters!</div>';
             } else {
-                const sortedData = [...salesData].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const sortedData = [...filteredData].sort((a, b) => new Date(b.date) - new Date(a.date));
                 
                 let tableHTML = `
                     <table>
@@ -417,9 +614,9 @@
                                 <th>Restaurant</th>
                                 <th>Total Amount</th>
                                 <th>Item Price</th>
-                                <th>Transaction Fees</th>
-                                <th>Customer Platform Fees</th>
-                                <th>Restro Platform Fees</th>
+                                <th>Trans. Fees</th>
+                                <th>Cust. Platform</th>
+                                <th>Restro Platform</th>
                                 <th>Profit</th>
                                 <th>Action</th>
                             </tr>
@@ -439,7 +636,10 @@
                             <td>₹${entry.customerPlatformFees.toFixed(2)}</td>
                             <td>₹${entry.restroPlatformFees.toFixed(2)}</td>
                             <td>₹${entry.profit.toFixed(2)}</td>
-                            <td><button class="delete-btn" onclick="deleteEntry(${entry.id})">Delete</button></td>
+                            <td>
+                                <button class="edit-btn" onclick="editEntry(${entry.id})">Edit</button>
+                                <button class="delete-btn" onclick="deleteEntry(${entry.id})">Delete</button>
+                            </td>
                         </tr>
                     `;
                 });
@@ -452,14 +652,28 @@
         }
 
         function updateStats() {
-            const totalEntries = salesData.length;
-            const totalSales = salesData.reduce((sum, entry) => sum + entry.totalAmount, 0);
-            const totalProfit = salesData.reduce((sum, entry) => sum + entry.profit, 0);
-            const avgMargin = totalSales > 0 ? (totalProfit / totalSales * 100) : 0;
+            const filteredData = getFilteredData();
+            const totalEntries = filteredData.length;
+            const totalSales = filteredData.reduce((sum, entry) => sum + entry.totalAmount, 0);
+            const grossProfit = filteredData.reduce((sum, entry) => sum + entry.profit, 0);
+            
+            // Calculate rider costs for filtered dates
+            let totalRiderCostAmount = 0;
+            const uniqueDates = [...new Set(filteredData.map(entry => entry.date))];
+            uniqueDates.forEach(date => {
+                if (riderCosts[date]) {
+                    totalRiderCostAmount += riderCosts[date];
+                }
+            });
+            
+            const netProfitAmount = grossProfit - totalRiderCostAmount;
+            const avgMargin = totalSales > 0 ? (netProfitAmount / totalSales * 100) : 0;
 
             document.getElementById('totalEntries').textContent = totalEntries;
             document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
-            document.getElementById('totalProfit').textContent = `₹${totalProfit.toFixed(2)}`;
+            document.getElementById('totalProfit').textContent = `₹${grossProfit.toFixed(2)}`;
+            document.getElementById('totalRiderCost').textContent = `₹${totalRiderCostAmount.toFixed(2)}`;
+            document.getElementById('netProfit').textContent = `₹${netProfitAmount.toFixed(2)}`;
             document.getElementById('avgMargin').textContent = `${avgMargin.toFixed(1)}%`;
         }
 
@@ -469,11 +683,13 @@
                 return;
             }
 
-            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit\n';
+            let csv = 'Date,Restaurant,Total Amount,Item Price,Transaction Fees %,Transaction Fees Amount,Customer Platform Fees,Restro Platform Fees,Profit,Rider Cost,Net Profit\n';
             
             salesData.forEach(entry => {
                 const transFeesAmount = (entry.itemPrice * entry.transactionFees) / 100;
-                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)}\n`;
+                const riderCost = riderCosts[entry.date] || 0;
+                const netProfit = entry.profit - riderCost;
+                csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)},${riderCost.toFixed(2)},${netProfit.toFixed(2)}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -490,11 +706,13 @@
         function clearAllData() {
             if (confirm('Are you sure you want to clear all data? This cannot be undone!')) {
                 salesData = [];
+                riderCosts = {};
                 saveData();
             }
         }
 
         document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('riderDate').valueAsDate = new Date();
         loadData();
     </script>
 </body>
