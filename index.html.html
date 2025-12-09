@@ -280,7 +280,7 @@
             margin-bottom: 20px;
         }
 
-        .rider-history {
+        .rider-details-form {
             background: white;
             border: 2px solid #ff8c42;
             border-radius: 12px;
@@ -288,14 +288,51 @@
             margin-top: 20px;
         }
 
-        .rider-history h3 {
+        .rider-details-form h3 {
             color: #ff5722;
             margin-bottom: 15px;
         }
 
-        .rider-entry {
+        .rider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .rider-item {
             background: #fff5f2;
             padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ffccbc;
+        }
+
+        .rider-item h4 {
+            color: #ff5722;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .rider-summary {
+            background: white;
+            border: 2px solid #ff8c42;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .rider-summary h3 {
+            color: #ff5722;
+            margin-bottom: 10px;
+        }
+
+        .rider-list {
+            margin-top: 15px;
+        }
+
+        .rider-entry {
+            background: #fff5f2;
+            padding: 12px;
             margin-bottom: 10px;
             border-radius: 8px;
             border-left: 4px solid #ff5722;
@@ -316,33 +353,21 @@
             background: #2196F3;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.85em;
             margin-right: 5px;
-            transition: all 0.3s;
-        }
-
-        .edit-rider-btn:hover {
-            background: #1976D2;
-            transform: scale(1.05);
         }
 
         .delete-rider-btn {
             background: #f44336;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.3s;
-        }
-
-        .delete-rider-btn:hover {
-            background: #d32f2f;
-            transform: scale(1.05);
+            font-size: 0.85em;
         }
 
         @media (max-width: 768px) {
@@ -431,21 +456,19 @@
             </div>
 
             <div class="rider-cost-section">
-                <h2>Daily Rider Cost</h2>
+                <h2>Daily Rider Management</h2>
                 <form id="riderCostForm" class="rider-form">
-                    <input type="hidden" id="editRiderDate">
                     <div class="form-group">
                         <label for="riderDate">Date</label>
                         <input type="date" id="riderDate" required>
                     </div>
                     <div class="form-group">
-                        <label for="riderCost">Rider Cost (₹)</label>
-                        <input type="number" id="riderCost" step="0.01" placeholder="0.00" required>
+                        <label for="numRiders">Number of Riders</label>
+                        <input type="number" id="numRiders" min="1" placeholder="0" required>
                     </div>
-                    <button type="submit" class="btn" id="riderSubmitBtn">Save Rider Cost</button>
-                    <button type="button" class="btn btn-secondary" onclick="cancelRiderEdit()" id="cancelRiderBtn" style="display: none;">Cancel</button>
+                    <button type="submit" class="btn">Add Riders</button>
                 </form>
-                <div id="riderHistoryContainer"></div>
+                <div id="riderDetailsContainer"></div>
             </div>
 
             <div class="filter-section">
@@ -486,6 +509,11 @@
                         <h3>Total Sales</h3>
                         <p id="totalSales">₹0.00</p>
                     </div>
+                    <!-- ⭐ NEW AOV KPI CARD ⭐ -->
+                    <div class="stat-card">
+                        <h3>AOV (Avg Order Value)</h3>
+                        <p id="aov">₹0.00</p>
+                    </div>
                     <div class="stat-card">
                         <h3>Gross Profit</h3>
                         <p id="totalProfit">₹0.00</p>
@@ -501,19 +529,6 @@
                     <div class="stat-card">
                         <h3>Avg Profit Margin</h3>
                         <p id="avgMargin">0%</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>AOV (Avg Order Value)</h3>
-                        <p id="aov">₹0.00</p>
-                        <p style="font-size: 0.7em; margin-top: 5px;" id="aovGrowth">--</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Daily Order Growth</h3>
-                        <p id="orderGrowth">--</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Daily Revenue Growth</h3>
-                        <p id="revenueGrowth">--</p>
                     </div>
                 </div>
 
@@ -613,79 +628,152 @@
 
         document.getElementById('riderCostForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const editDate = document.getElementById('editRiderDate').value;
             const date = document.getElementById('riderDate').value;
-            const cost = parseFloat(document.getElementById('riderCost').value);
+            const numRiders = parseInt(document.getElementById('numRiders').value);
             
-            // If editing, use the edit date, otherwise use the new date
-            const finalDate = editDate || date;
+            if (!numRiders || numRiders < 1) {
+                alert('Please enter a valid number of riders (at least 1)');
+                return;
+            }
             
-            riderCosts[finalDate] = cost;
-            saveData();
+            editingRiderDate = date;
+            showRiderDetailsForm(date, numRiders);
             this.reset();
-            document.getElementById('editRiderDate').value = '';
-            document.getElementById('riderDate').valueAsDate = new Date();
-            document.getElementById('riderSubmitBtn').textContent = 'Save Rider Cost';
-            document.getElementById('cancelRiderBtn').style.display = 'none';
-            alert('Rider cost saved successfully!');
+            document.getElementById('riderDate').value = date;
         });
 
-        function editRiderCost(date) {
-            const cost = riderCosts[date];
-            document.getElementById('editRiderDate').value = date;
-            document.getElementById('riderDate').value = date;
-            document.getElementById('riderCost').value = cost;
-            document.getElementById('riderSubmitBtn').textContent = 'Update Rider Cost';
-            document.getElementById('cancelRiderBtn').style.display = 'inline-block';
+        function showRiderDetailsForm(date, numRiders) {
+            const container = document.getElementById('riderDetailsContainer');
+            const existingData = riderDetails[date] || [];
             
-            // Scroll to form
-            document.getElementById('riderCostForm').scrollIntoView({ behavior: 'smooth' });
-        }
+            let formHTML = `
+                <div class="rider-details-form">
+                    <h3>Enter Details for ${numRiders} Rider(s) on ${date}</h3>
+                    <div class="rider-grid">
+            `;
 
-        function cancelRiderEdit() {
-            document.getElementById('riderCostForm').reset();
-            document.getElementById('editRiderDate').value = '';
-            document.getElementById('riderDate').valueAsDate = new Date();
-            document.getElementById('riderSubmitBtn').textContent = 'Save Rider Cost';
-            document.getElementById('cancelRiderBtn').style.display = 'none';
-        }
-
-        function deleteRiderCost(date) {
-            if (confirm(`Are you sure you want to delete rider cost for ${date}?`)) {
-                delete riderCosts[date];
-                saveData();
+            for (let i = 0; i < numRiders; i++) {
+                const rider = existingData[i] || { name: '', wage: '' };
+                formHTML += `
+                    <div class="rider-item">
+                        <h4>Rider ${i + 1}</h4>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" class="rider-name" value="${rider.name}" placeholder="Enter name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Wage (₹)</label>
+                            <input type="number" class="rider-wage" value="${rider.wage}" step="0.01" placeholder="0.00" required>
+                        </div>
+                    </div>
+                `;
             }
+
+            formHTML += `
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button type="button" class="btn" onclick="saveRiderDetailsFromForm('${date}')">Save All Riders</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelRiderForm()">Cancel</button>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = formHTML;
         }
 
-        function displayRiderHistory() {
-            const container = document.getElementById('riderHistoryContainer');
+        function saveRiderDetailsFromForm(date) {
+            const names = document.querySelectorAll('.rider-name');
+            const wages = document.querySelectorAll('.rider-wage');
             
-            if (Object.keys(riderCosts).length === 0) {
-                container.innerHTML = '';
+            const riders = [];
+            let totalCost = 0;
+            let allValid = true;
+
+            for (let i = 0; i < names.length; i++) {
+                const name = names[i].value.trim();
+                const wage = parseFloat(wages[i].value);
+                
+                if (!name || !wage || wage <= 0) {
+                    allValid = false;
+                    break;
+                }
+                
+                riders.push({ name, wage });
+                totalCost += wage;
+            }
+
+            if (!allValid) {
+                alert('Please fill in all rider names and wages correctly!');
                 return;
             }
 
-            let historyHTML = '<div class="rider-history"><h3>📋 Rider Cost History</h3>';
+            riderDetails[date] = riders;
+            riderCosts[date] = totalCost;
+            
+            saveData();
+            editingRiderDate = null;
+            displayRiderSummary();
+            alert('Rider details saved successfully!');
+        }
 
-            const sortedDates = Object.keys(riderCosts).sort((a, b) => new Date(b) - new Date(a));
+        function cancelRiderForm() {
+            document.getElementById('riderDetailsContainer').innerHTML = '';
+            editingRiderDate = null;
+            displayRiderSummary();
+        }
+
+        function displayRiderSummary() {
+            if (editingRiderDate) return; // Don't show summary if editing
+            
+            const container = document.getElementById('riderDetailsContainer');
+            
+            if (Object.keys(riderDetails).length === 0) {
+                container.innerHTML = '<div class="no-data" style="padding: 20px;">No rider records yet. Add riders above!</div>';
+                return;
+            }
+
+            let summaryHTML = '<div class="rider-summary"><h3>📋 Rider Records History</h3><div class="rider-list">';
+
+            const sortedDates = Object.keys(riderDetails).sort((a, b) => new Date(b) - new Date(a));
 
             sortedDates.forEach(date => {
-                const cost = riderCosts[date];
-                historyHTML += `
+                const riders = riderDetails[date];
+                const totalCost = riderCosts[date] || 0;
+
+                summaryHTML += `
                     <div class="rider-entry">
                         <div class="rider-info">
-                            <strong>📅 ${date}</strong> - <span style="color: #ff5722; font-weight: bold;">₹${cost.toFixed(2)}</span>
+                            <strong>📅 ${date}</strong> - ${riders.length} Rider(s) - <strong style="color: #ff5722;">Total: ₹${totalCost.toFixed(2)}</strong>
+                            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+                                ${riders.map(r => `<span style="background: #ffe0d6; padding: 4px 8px; border-radius: 4px; margin-right: 8px; display: inline-block; margin-bottom: 4px;">👤 ${r.name}: ₹${r.wage.toFixed(2)}</span>`).join('')}
+                            </div>
                         </div>
                         <div>
-                            <button class="edit-rider-btn" onclick="editRiderCost('${date}')">Edit</button>
-                            <button class="delete-rider-btn" onclick="deleteRiderCost('${date}')">Delete</button>
+                            <button class="edit-rider-btn" onclick="editRiderEntry('${date}')">Edit</button>
+                            <button class="delete-rider-btn" onclick="deleteRiderEntry('${date}')">Delete</button>
                         </div>
                     </div>
                 `;
             });
 
-            historyHTML += '</div>';
-            container.innerHTML = historyHTML;
+            summaryHTML += '</div></div>';
+            container.innerHTML = summaryHTML;
+        }
+
+        function editRiderEntry(date) {
+            const riders = riderDetails[date];
+            document.getElementById('riderDate').value = date;
+            document.getElementById('numRiders').value = riders.length;
+            editingRiderDate = date;
+            showRiderDetailsForm(date, riders.length);
+        }
+
+        function deleteRiderEntry(date) {
+            if (confirm(`Are you sure you want to delete rider records for ${date}?`)) {
+                delete riderDetails[date];
+                delete riderCosts[date];
+                saveData();
+            }
         }
 
         function editEntry(id) {
@@ -825,72 +913,16 @@
             const netProfitAmount = grossProfit - totalRiderCostAmount;
             const avgMargin = totalSales > 0 ? (netProfitAmount / totalSales * 100) : 0;
 
-            // Calculate AOV (Average Order Value)
-            const aov = totalEntries > 0 ? totalSales / totalEntries : 0;
+            // ⭐ NEW AOV CALCULATION ⭐
+            const aov = totalEntries > 0 ? (totalSales / totalEntries) : 0;
 
-            // Get today and yesterday data for growth calculations
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-            const todayData = salesData.filter(entry => entry.date === today);
-            const yesterdayData = salesData.filter(entry => entry.date === yesterday);
-
-            const todayOrders = todayData.length;
-            const yesterdayOrders = yesterdayData.length;
-            const todayRevenue = todayData.reduce((sum, entry) => sum + entry.totalAmount, 0);
-            const yesterdayRevenue = yesterdayData.reduce((sum, entry) => sum + entry.totalAmount, 0);
-
-            // Calculate today and yesterday AOV
-            const todayAOV = todayOrders > 0 ? todayRevenue / todayOrders : 0;
-            const yesterdayAOV = yesterdayOrders > 0 ? yesterdayRevenue / yesterdayOrders : 0;
-
-            // Calculate growth percentages
-            const aovGrowth = yesterdayAOV > 0 ? ((todayAOV - yesterdayAOV) / yesterdayAOV * 100) : 0;
-            const orderGrowth = yesterdayOrders > 0 ? ((todayOrders - yesterdayOrders) / yesterdayOrders * 100) : 0;
-            const revenueGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100) : 0;
-
-            // Update display
             document.getElementById('totalEntries').textContent = totalEntries;
             document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
             document.getElementById('totalProfit').textContent = `₹${grossProfit.toFixed(2)}`;
             document.getElementById('totalRiderCost').textContent = `₹${totalRiderCostAmount.toFixed(2)}`;
             document.getElementById('netProfit').textContent = `₹${netProfitAmount.toFixed(2)}`;
             document.getElementById('avgMargin').textContent = `${avgMargin.toFixed(1)}%`;
-            document.getElementById('aov').textContent = `₹${aov.toFixed(2)}`;
-
-            // Update AOV growth with color
-            const aovGrowthEl = document.getElementById('aovGrowth');
-            if (yesterdayAOV > 0) {
-                const growthSymbol = aovGrowth >= 0 ? '↑' : '↓';
-                const growthColor = aovGrowth >= 0 ? '#4caf50' : '#f44336';
-                aovGrowthEl.innerHTML = `<span style="color: ${growthColor};">${growthSymbol} ${Math.abs(aovGrowth).toFixed(1)}% vs yesterday</span>`;
-            } else {
-                aovGrowthEl.textContent = 'No data for yesterday';
-            }
-
-            // Update Order Growth
-            const orderGrowthEl = document.getElementById('orderGrowth');
-            if (yesterdayOrders > 0) {
-                const growthSymbol = orderGrowth >= 0 ? '↑' : '↓';
-                const growthColor = orderGrowth >= 0 ? '#4caf50' : '#f44336';
-                orderGrowthEl.innerHTML = `<span style="color: ${growthColor};">${growthSymbol} ${Math.abs(orderGrowth).toFixed(1)}%</span>`;
-                orderGrowthEl.style.fontSize = '1.5em';
-            } else {
-                orderGrowthEl.textContent = 'No data';
-                orderGrowthEl.style.fontSize = '1.2em';
-            }
-
-            // Update Revenue Growth
-            const revenueGrowthEl = document.getElementById('revenueGrowth');
-            if (yesterdayRevenue > 0) {
-                const growthSymbol = revenueGrowth >= 0 ? '↑' : '↓';
-                const growthColor = revenueGrowth >= 0 ? '#4caf50' : '#f44336';
-                revenueGrowthEl.innerHTML = `<span style="color: ${growthColor};">${growthSymbol} ${Math.abs(revenueGrowth).toFixed(1)}%</span>`;
-                revenueGrowthEl.style.fontSize = '1.5em';
-            } else {
-                revenueGrowthEl.textContent = 'No data';
-                revenueGrowthEl.style.fontSize = '1.2em';
-            }
+            document.getElementById('aov').textContent = `₹${aov.toFixed(2)}`; // ⭐ UPDATE AOV KPI
         }
 
         function exportToCSV() {
