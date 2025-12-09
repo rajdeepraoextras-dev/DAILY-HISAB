@@ -177,8 +177,9 @@
 
         .stat-card p {
             color: #ff6f00;
-            font-size: 1.8em;
+            font-size: 1.5em;
             font-weight: bold;
+            word-break: break-word;
         }
 
         table {
@@ -370,6 +371,27 @@
             font-size: 0.85em;
         }
 
+        .charts-section {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .chart-card {
+            background: #fff5f2;
+            border-radius: 15px;
+            border: 2px solid #ff8c42;
+            padding: 15px;
+        }
+
+        .chart-card h3 {
+            color: #ff5722;
+            font-size: 1em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
         @media (max-width: 768px) {
             .form-grid, .filter-grid {
                 grid-template-columns: 1fr;
@@ -431,7 +453,7 @@
                         </div>
                         <div class="form-group">
                             <label for="transactionFees">Transaction Fees (%)</label>
-                            <input type="number" id="transactionFees" step="0.01" placeholder="0.00" value="0" required>
+                            <input type="number" id="transactionFees" step="0.01" placeholder="0.00" value="1" required>
                         </div>
                         <div class="form-group">
                             <label for="customerPlatformFees">Platform Fees from Customer (₹)</label>
@@ -509,7 +531,6 @@
                         <h3>Total Sales</h3>
                         <p id="totalSales">₹0.00</p>
                     </div>
-                    <!-- ⭐ NEW AOV KPI CARD ⭐ -->
                     <div class="stat-card">
                         <h3>AOV (Avg Order Value)</h3>
                         <p id="aov">₹0.00</p>
@@ -530,13 +551,51 @@
                         <h3>Avg Profit Margin</h3>
                         <p id="avgMargin">0%</p>
                     </div>
+                    <div class="stat-card">
+                        <h3>Daily Order Growth</h3>
+                        <p id="dailyOrdersGrowth">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Daily Revenue Growth</h3>
+                        <p id="dailyRevenueGrowth">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Daily Profit Growth</h3>
+                        <p id="dailyProfitGrowth">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Orders per Day</h3>
+                        <p id="avgOrdersPerDay">0.0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Top Restro (Profit)</h3>
+                        <p id="topRestroByProfit">N/A</p>
+                    </div>
                 </div>
 
                 <h2>Sales Records</h2>
                 <div id="tableContainer"></div>
+
+                <div class="charts-section">
+                    <div class="chart-card">
+                        <h3>Restaurant Profit Leaderboard</h3>
+                        <canvas id="restroLeaderboardChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Daily Revenue Trend</h3>
+                        <canvas id="dailyRevenueChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Daily Profit Trend</h3>
+                        <canvas id="dailyProfitChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
         let salesData = [];
@@ -545,17 +604,24 @@
         let currentFilters = { date: '', restro: '' };
         let editingRiderDate = null;
 
+        let restroLeaderboardChart = null;
+        let dailyRevenueChart = null;
+        let dailyProfitChart = null;
+
         function calculateProfit() {
             const totalAmount = parseFloat(document.getElementById('totalAmount').value) || 0;
             const itemPrice = parseFloat(document.getElementById('itemPrice').value) || 0;
             const transactionFeesPercent = parseFloat(document.getElementById('transactionFees').value) || 0;
-            const customerPlatformFees = parseFloat(document.getElementById('customerPlatformFees').value) || 0;
-            const restroPlatformFees = parseFloat(document.getElementById('restroPlatformFees').value) || 2;
+            const restroPlatformFees = parseFloat(document.getElementById('restroPlatformFees').value) || 0;
 
-            const transactionFeesAmount = (itemPrice * transactionFeesPercent) / 100;
-            const totalPlatformFees = customerPlatformFees + restroPlatformFees;
-            const profit = totalAmount - itemPrice - transactionFeesAmount + totalPlatformFees;
-            
+            // Customer-side margin (includes delivery + platform fees)
+            const customerSideProfit = totalAmount - itemPrice;
+
+            // Transaction fees are 1% (or given %) of item price – your profit
+            const transactionProfit = (itemPrice * transactionFeesPercent) / 100;
+
+            const profit = customerSideProfit + restroPlatformFees + transactionProfit;
+
             document.getElementById('profit').value = profit.toFixed(2);
         }
 
@@ -597,12 +663,12 @@
                 id: editId ? parseInt(editId) : Date.now(),
                 date: document.getElementById('date').value,
                 restro: document.getElementById('restro').value,
-                totalAmount: parseFloat(document.getElementById('totalAmount').value),
-                itemPrice: parseFloat(document.getElementById('itemPrice').value),
-                transactionFees: parseFloat(document.getElementById('transactionFees').value),
-                customerPlatformFees: parseFloat(document.getElementById('customerPlatformFees').value),
-                restroPlatformFees: parseFloat(document.getElementById('restroPlatformFees').value),
-                profit: parseFloat(document.getElementById('profit').value)
+                totalAmount: parseFloat(document.getElementById('totalAmount').value) || 0,
+                itemPrice: parseFloat(document.getElementById('itemPrice').value) || 0,
+                transactionFees: parseFloat(document.getElementById('transactionFees').value) || 0,
+                customerPlatformFees: parseFloat(document.getElementById('customerPlatformFees').value) || 0,
+                restroPlatformFees: parseFloat(document.getElementById('restroPlatformFees').value) || 0,
+                profit: parseFloat(document.getElementById('profit').value) || 0
             };
 
             if (editId) {
@@ -618,7 +684,7 @@
             this.reset();
             document.getElementById('editId').value = '';
             document.getElementById('date').valueAsDate = new Date();
-            document.getElementById('transactionFees').value = '0';
+            document.getElementById('transactionFees').value = '1';
             document.getElementById('customerPlatformFees').value = '0';
             document.getElementById('restroPlatformFees').value = '2';
             document.getElementById('profit').value = '';
@@ -723,7 +789,7 @@
         }
 
         function displayRiderSummary() {
-            if (editingRiderDate) return; // Don't show summary if editing
+            if (editingRiderDate) return;
             
             const container = document.getElementById('riderDetailsContainer');
             
@@ -799,7 +865,7 @@
             document.getElementById('salesForm').reset();
             document.getElementById('editId').value = '';
             document.getElementById('date').valueAsDate = new Date();
-            document.getElementById('transactionFees').value = '0';
+            document.getElementById('transactionFees').value = '1';
             document.getElementById('customerPlatformFees').value = '0';
             document.getElementById('restroPlatformFees').value = '2';
             document.getElementById('profit').value = '';
@@ -895,13 +961,18 @@
             updateStats();
         }
 
+        function calcGrowth(curr, prev) {
+            if (prev <= 0) return 0;
+            return ((curr - prev) / prev) * 100;
+        }
+
         function updateStats() {
             const filteredData = getFilteredData();
             const totalEntries = filteredData.length;
             const totalSales = filteredData.reduce((sum, entry) => sum + entry.totalAmount, 0);
             const grossProfit = filteredData.reduce((sum, entry) => sum + entry.profit, 0);
             
-            // Calculate rider costs for filtered dates
+            // Rider costs for filtered dates
             let totalRiderCostAmount = 0;
             const uniqueDates = [...new Set(filteredData.map(entry => entry.date))];
             uniqueDates.forEach(date => {
@@ -913,8 +984,58 @@
             const netProfitAmount = grossProfit - totalRiderCostAmount;
             const avgMargin = totalSales > 0 ? (netProfitAmount / totalSales * 100) : 0;
 
-            // ⭐ NEW AOV CALCULATION ⭐
+            // AOV
             const aov = totalEntries > 0 ? (totalSales / totalEntries) : 0;
+
+            // Aggregate by date
+            const dateAgg = {};
+            filteredData.forEach(entry => {
+                if (!dateAgg[entry.date]) {
+                    dateAgg[entry.date] = { orders: 0, sales: 0, profit: 0 };
+                }
+                dateAgg[entry.date].orders += 1;
+                dateAgg[entry.date].sales += entry.totalAmount;
+                dateAgg[entry.date].profit += entry.profit;
+            });
+
+            const dateKeys = Object.keys(dateAgg).sort((a, b) => new Date(a) - new Date(b));
+            let latestDate = null;
+            let prevDateStr = null;
+
+            if (dateKeys.length > 0) {
+                latestDate = dateKeys[dateKeys.length - 1];
+                const prevDateObj = new Date(latestDate);
+                prevDateObj.setDate(prevDateObj.getDate() - 1);
+                prevDateStr = prevDateObj.toISOString().split('T')[0];
+            }
+
+            const todayMetrics = latestDate ? dateAgg[latestDate] : { orders: 0, sales: 0, profit: 0 };
+            const prevMetrics = (prevDateStr && dateAgg[prevDateStr]) ? dateAgg[prevDateStr] : { orders: 0, sales: 0, profit: 0 };
+
+            const dailyOrdersGrowth = calcGrowth(todayMetrics.orders, prevMetrics.orders);
+            const dailyRevenueGrowth = calcGrowth(todayMetrics.sales, prevMetrics.sales);
+            const dailyProfitGrowth = calcGrowth(todayMetrics.profit, prevMetrics.profit);
+
+            const totalDays = dateKeys.length;
+            const avgOrdersPerDay = totalDays > 0 ? totalEntries / totalDays : 0;
+
+            // Top restaurant by profit
+            const restroAgg = {};
+            filteredData.forEach(entry => {
+                if (!restroAgg[entry.restro]) {
+                    restroAgg[entry.restro] = { profit: 0 };
+                }
+                restroAgg[entry.restro].profit += entry.profit;
+            });
+
+            let topRestroName = 'N/A';
+            let topRestroProfit = 0;
+            Object.keys(restroAgg).forEach(r => {
+                if (restroAgg[r].profit > topRestroProfit) {
+                    topRestroProfit = restroAgg[r].profit;
+                    topRestroName = r;
+                }
+            });
 
             document.getElementById('totalEntries').textContent = totalEntries;
             document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
@@ -922,7 +1043,109 @@
             document.getElementById('totalRiderCost').textContent = `₹${totalRiderCostAmount.toFixed(2)}`;
             document.getElementById('netProfit').textContent = `₹${netProfitAmount.toFixed(2)}`;
             document.getElementById('avgMargin').textContent = `${avgMargin.toFixed(1)}%`;
-            document.getElementById('aov').textContent = `₹${aov.toFixed(2)}`; // ⭐ UPDATE AOV KPI
+            document.getElementById('aov').textContent = `₹${aov.toFixed(2)}`;
+            document.getElementById('dailyOrdersGrowth').textContent = `${dailyOrdersGrowth.toFixed(1)}%`;
+            document.getElementById('dailyRevenueGrowth').textContent = `${dailyRevenueGrowth.toFixed(1)}%`;
+            document.getElementById('dailyProfitGrowth').textContent = `${dailyProfitGrowth.toFixed(1)}%`;
+            document.getElementById('avgOrdersPerDay').textContent = `${avgOrdersPerDay.toFixed(1)}`;
+            document.getElementById('topRestroByProfit').textContent = topRestroName === 'N/A' ? 'N/A' : `${topRestroName} (₹${topRestroProfit.toFixed(0)})`;
+
+            updateCharts(filteredData, dateAgg, restroAgg);
+        }
+
+        function updateCharts(filteredData, dateAgg, restroAgg) {
+            // Restaurant leaderboard (by profit)
+            const restroLabels = Object.keys(restroAgg);
+            const restroProfits = restroLabels.map(r => restroAgg[r].profit);
+
+            const sortedRestros = restroLabels
+                .map((r, idx) => ({ name: r, profit: restroProfits[idx] }))
+                .sort((a, b) => b.profit - a.profit)
+                .slice(0, 10);
+
+            const leaderboardLabels = sortedRestros.map(r => r.name);
+            const leaderboardData = sortedRestros.map(r => r.profit);
+
+            const restroCtx = document.getElementById('restroLeaderboardChart').getContext('2d');
+            if (restroLeaderboardChart) restroLeaderboardChart.destroy();
+            restroLeaderboardChart = new Chart(restroCtx, {
+                type: 'bar',
+                data: {
+                    labels: leaderboardLabels,
+                    datasets: [{
+                        label: 'Profit (₹)',
+                        data: leaderboardData
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 } },
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Daily revenue chart
+            const dateKeys = Object.keys(dateAgg).sort((a, b) => new Date(a) - new Date(b));
+            const dailyRevenueLabels = dateKeys;
+            const dailyRevenueData = dateKeys.map(d => dateAgg[d].sales);
+
+            const revenueCtx = document.getElementById('dailyRevenueChart').getContext('2d');
+            if (dailyRevenueChart) dailyRevenueChart.destroy();
+            dailyRevenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: dailyRevenueLabels,
+                    datasets: [{
+                        label: 'Revenue (₹)',
+                        data: dailyRevenueData,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Daily profit chart
+            const dailyProfitLabels = dateKeys;
+            const dailyProfitData = dateKeys.map(d => dateAgg[d].profit);
+
+            const profitCtx = document.getElementById('dailyProfitChart').getContext('2d');
+            if (dailyProfitChart) dailyProfitChart.destroy();
+            dailyProfitChart = new Chart(profitCtx, {
+                type: 'line',
+                data: {
+                    labels: dailyProfitLabels,
+                    datasets: [{
+                        label: 'Profit (₹)',
+                        data: dailyProfitData,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
         }
 
         function exportToCSV() {
@@ -938,7 +1161,6 @@
                 csv += `${entry.date},${entry.restro},${entry.totalAmount.toFixed(2)},${entry.itemPrice.toFixed(2)},${entry.transactionFees}%,${transFeesAmount.toFixed(2)},${entry.customerPlatformFees.toFixed(2)},${entry.restroPlatformFees.toFixed(2)},${entry.profit.toFixed(2)}\n`;
             });
 
-            // Add rider summary
             csv += '\n\nRider Details\n';
             csv += 'Date,Rider Name,Wage,Total Riders,Total Cost\n';
             
