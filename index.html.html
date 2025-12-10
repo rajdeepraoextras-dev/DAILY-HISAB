@@ -218,7 +218,7 @@
 
     <script>
         // ============================================================
-        // ✅ URL INSERTED BELOW
+        // ✅ YOUR SPECIFIC URL IS ALREADY PASTED BELOW!
         // ============================================================
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnIWaxlQnDN6J0NAVvuwvC48rhgwc42pikCjDx-0dzy2GetuGnYNmXQLwJkxLMat8l/exec';
         // ============================================================
@@ -235,15 +235,21 @@
         async function loadData() {
             showLoader();
             try {
-                if(SCRIPT_URL.includes('PASTE_YOUR')) {
-                    alert("Please edit the HTML file and add your Google Script URL!");
-                    hideLoader(); return;
-                }
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
                 
-                allSalesData = data.sales;
-                allRiderData = data.riders;
+                // DATA NORMALIZATION (Fixing the Date Issues)
+                allSalesData = data.sales.map(item => {
+                    item.date = normalizeDate(item.date); // Convert all dates to clean YYYY-MM-DD
+                    return item;
+                });
+
+                allRiderData = {};
+                // Normalize dates in rider data keys
+                for (let dateKey in data.riders) {
+                    const cleanDate = normalizeDate(dateKey);
+                    allRiderData[cleanDate] = data.riders[dateKey];
+                }
                 
                 updateDashboard(); 
                 renderRiderHistoryUI();
@@ -252,6 +258,25 @@
                 alert("Connection Error. Check console.");
             }
             hideLoader();
+        }
+
+        // --- HELPER: Fixes Timezone/Format Issues ---
+        function normalizeDate(rawDate) {
+            if (!rawDate) return "";
+            // If already YYYY-MM-DD string, return it
+            if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return rawDate;
+            }
+            // If it's a full ISO string or other format, convert to local YYYY-MM-DD
+            try {
+                const d = new Date(rawDate);
+                // Adjust for local timezone offset to prevent "off by one day" errors
+                const offset = d.getTimezoneOffset() * 60000;
+                const localDate = new Date(d.getTime() - offset);
+                return localDate.toISOString().split('T')[0];
+            } catch(e) {
+                return rawDate; // Fallback
+            }
         }
 
         async function sendToSheet(payload) {
@@ -273,7 +298,7 @@
 
         // --- DASHBOARD LOGIC ---
         function updateDashboard() {
-            const filterDate = document.getElementById('filterDate').value;
+            const filterDate = document.getElementById('filterDate').value; // YYYY-MM-DD
             const filterRestro = document.getElementById('filterRestro').value;
 
             // 1. Filter Sales Data
@@ -298,15 +323,12 @@
             const entryCount = filteredSales.length;
 
             // 4. Advanced KPIs
-            // AOV
             const aov = entryCount > 0 ? (totalRevenue / entryCount) : 0;
-            
-            // Unique Dates (for daily averages)
             const uniqueDates = [...new Set(filteredSales.map(s => s.date))].length || 1;
             const avgOrders = entryCount / uniqueDates;
             const avgRevenue = totalRevenue / uniqueDates;
 
-            // 5. Growth Metrics (Current Data vs Previous Day Logic)
+            // 5. Growth Metrics
             calculateGrowthMetrics(filteredSales);
 
             // 6. Update UI
@@ -336,7 +358,6 @@
 
             const sortedDates = Object.keys(dailyAgg).sort();
             
-            // Need at least 2 days to show growth
             if(sortedDates.length < 2) {
                 document.getElementById('growthOrders').innerHTML = '—';
                 document.getElementById('growthRevenue').innerHTML = '—';
