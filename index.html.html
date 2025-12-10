@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Sales Tracker (Live)</title>
+    <title>Restaurant Sales Tracker (Pro)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- CSS STYLES --- */
@@ -43,6 +43,11 @@
         .stat-card { background: white; border: 1px solid #ffccbc; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .stat-card h3 { font-size: 0.8em; color: #757575; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card p { color: #ff5722; font-size: 1.4em; font-weight: 800; margin: 0; }
+        
+        /* Growth Colors */
+        .growth-positive { color: #2e7d32; font-size: 0.8em; font-weight: bold; }
+        .growth-negative { color: #c62828; font-size: 0.8em; font-weight: bold; }
+        .growth-neutral { color: #757575; font-size: 0.8em; font-weight: bold; }
 
         /* Filter Section */
         .filter-section { background: white; padding: 20px; border-radius: 12px; border: 1px solid #ffccbc; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
@@ -183,11 +188,19 @@
                 </div>
 
                 <div class="stats">
-                    <div class="stat-card"><h3>Orders</h3><p id="totalEntries">0</p></div>
-                    <div class="stat-card"><h3>Revenue</h3><p id="totalSales">₹0</p></div>
+                    <div class="stat-card"><h3>Total Orders</h3><p id="totalEntries">0</p></div>
+                    <div class="stat-card"><h3>Total Revenue</h3><p id="totalSales">₹0</p></div>
                     <div class="stat-card"><h3>Gross Profit</h3><p id="totalGrossProfit">₹0</p></div>
                     <div class="stat-card"><h3>Rider Cost</h3><p id="totalRiderCost" style="color: #c62828;">₹0</p></div>
                     <div class="stat-card"><h3>Net Profit</h3><p id="netProfit" style="color: #2e7d32;">₹0</p></div>
+                    
+                    <div class="stat-card"><h3>AOV (Avg Order Val)</h3><p id="aov">₹0</p></div>
+                    <div class="stat-card"><h3>Avg Orders/Day</h3><p id="avgOrders">0</p></div>
+                    <div class="stat-card"><h3>Avg Revenue/Day</h3><p id="avgRevenue">₹0</p></div>
+                    
+                    <div class="stat-card"><h3>Daily Order Growth</h3><div id="growthOrders" class="growth-neutral">—</div></div>
+                    <div class="stat-card"><h3>Daily Rev Growth</h3><div id="growthRevenue" class="growth-neutral">—</div></div>
+                    <div class="stat-card"><h3>Daily Profit Growth</h3><div id="growthProfit" class="growth-neutral">—</div></div>
                 </div>
 
                 <div class="charts-grid">
@@ -205,9 +218,9 @@
 
     <script>
         // ============================================================
-        // ✅ YOUR GOOGLE APPS SCRIPT URL IS SET BELOW
+        // 🔴 PASTE YOUR GOOGLE APPS SCRIPT URL HERE
         // ============================================================
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnIWaxlQnDN6J0NAVvuwvC48rhgwc42pikCjDx-0dzy2GetuGnYNmXQLwJkxLMat8l/exec';
+        const SCRIPT_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
         // ============================================================
 
         let allSalesData = [];
@@ -222,13 +235,17 @@
         async function loadData() {
             showLoader();
             try {
+                if(SCRIPT_URL.includes('PASTE_YOUR')) {
+                    alert("Please edit the HTML file and add your Google Script URL!");
+                    hideLoader(); return;
+                }
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
                 
                 allSalesData = data.sales;
                 allRiderData = data.riders;
                 
-                updateDashboard(); // Updates everything (Stats, Table, Charts)
+                updateDashboard(); 
                 renderRiderHistoryUI();
             } catch (e) {
                 console.error(e);
@@ -254,7 +271,7 @@
             }
         }
 
-        // --- DASHBOARD LOGIC (With Filtering) ---
+        // --- DASHBOARD LOGIC ---
         function updateDashboard() {
             const filterDate = document.getElementById('filterDate').value;
             const filterRestro = document.getElementById('filterRestro').value;
@@ -266,35 +283,87 @@
                 return dateMatch && restroMatch;
             });
 
-            // 2. Calculate Rider Costs based on Filter context
+            // 2. Rider Costs
             let relevantRiderCost = 0;
-            
             if (filterDate) {
-                // Exact date match
-                if(allRiderData[filterDate]) {
-                    relevantRiderCost = allRiderData[filterDate].reduce((sum, r) => sum + r.wage, 0);
-                }
+                if(allRiderData[filterDate]) relevantRiderCost = allRiderData[filterDate].reduce((sum, r) => sum + r.wage, 0);
             } else {
-                // Sum ALL rider costs if no specific date selected
-                Object.values(allRiderData).forEach(dayList => {
-                    dayList.forEach(r => relevantRiderCost += r.wage);
-                });
+                Object.values(allRiderData).forEach(dayList => dayList.forEach(r => relevantRiderCost += r.wage));
             }
 
-            // 3. Calculate Stats
+            // 3. Basic Stats
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
             const netProfit = totalGross - relevantRiderCost;
+            const entryCount = filteredSales.length;
 
-            // 4. Update UI
-            document.getElementById('totalEntries').textContent = filteredSales.length;
+            // 4. Advanced KPIs
+            // AOV
+            const aov = entryCount > 0 ? (totalRevenue / entryCount) : 0;
+            
+            // Unique Dates (for daily averages)
+            const uniqueDates = [...new Set(filteredSales.map(s => s.date))].length || 1;
+            const avgOrders = entryCount / uniqueDates;
+            const avgRevenue = totalRevenue / uniqueDates;
+
+            // 5. Growth Metrics (Current Data vs Previous Day Logic)
+            calculateGrowthMetrics(filteredSales);
+
+            // 6. Update UI
+            document.getElementById('totalEntries').textContent = entryCount;
             document.getElementById('totalSales').textContent = `₹${totalRevenue.toLocaleString()}`;
             document.getElementById('totalGrossProfit').textContent = `₹${totalGross.toLocaleString()}`;
             document.getElementById('totalRiderCost').textContent = `₹${relevantRiderCost.toLocaleString()}`;
             document.getElementById('netProfit').textContent = `₹${netProfit.toLocaleString()}`;
+            
+            document.getElementById('aov').textContent = `₹${aov.toFixed(0)}`;
+            document.getElementById('avgOrders').textContent = avgOrders.toFixed(1);
+            document.getElementById('avgRevenue').textContent = `₹${avgRevenue.toFixed(0)}`;
 
             renderTable(filteredSales);
             renderCharts(filteredSales);
+        }
+
+        function calculateGrowthMetrics(data) {
+            // Group by Date
+            const dailyAgg = {};
+            data.forEach(s => {
+                if(!dailyAgg[s.date]) dailyAgg[s.date] = { orders: 0, revenue: 0, profit: 0 };
+                dailyAgg[s.date].orders++;
+                dailyAgg[s.date].revenue += s.totalAmount;
+                dailyAgg[s.date].profit += s.profit;
+            });
+
+            const sortedDates = Object.keys(dailyAgg).sort();
+            
+            // Need at least 2 days to show growth
+            if(sortedDates.length < 2) {
+                document.getElementById('growthOrders').innerHTML = '—';
+                document.getElementById('growthRevenue').innerHTML = '—';
+                document.getElementById('growthProfit').innerHTML = '—';
+                return;
+            }
+
+            const today = dailyAgg[sortedDates[sortedDates.length - 1]];
+            const yesterday = dailyAgg[sortedDates[sortedDates.length - 2]];
+
+            updateGrowthUI('growthOrders', today.orders, yesterday.orders, '');
+            updateGrowthUI('growthRevenue', today.revenue, yesterday.revenue, '₹');
+            updateGrowthUI('growthProfit', today.profit, yesterday.profit, '₹');
+        }
+
+        function updateGrowthUI(elementId, current, previous, prefix) {
+            if(previous === 0) return;
+            const growth = ((current - previous) / previous) * 100;
+            const el = document.getElementById(elementId);
+            
+            let icon = '—';
+            let colorClass = 'growth-neutral';
+
+            if(growth > 0) { icon = '▲'; colorClass = 'growth-positive'; }
+            if(growth < 0) { icon = '▼'; colorClass = 'growth-negative'; }
+
+            el.innerHTML = `<span class="${colorClass}">${icon} ${growth.toFixed(1)}%</span>`;
         }
 
         function clearFilters() {
@@ -304,13 +373,9 @@
         }
 
         function renderTable(data) {
-            // Sort by Date Descending
             const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
-            
             let html = `<table><thead><tr><th>Date</th><th>Restaurant</th><th>Total</th><th>Profit</th><th>Action</th></tr></thead><tbody>`;
-            
             if(sorted.length === 0) html += '<tr><td colspan="5" style="text-align:center; padding:20px;">No records found</td></tr>';
-            
             sorted.slice(0, 100).forEach(row => {
                 html += `<tr>
                     <td>${row.date}</td>
@@ -327,8 +392,7 @@
         function renderCharts(data) {
             const ctxRestro = document.getElementById('restroChart').getContext('2d');
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
-
-            // Process Data for Charts
+            
             const restroAgg = {};
             const dateAgg = {};
 
@@ -337,10 +401,7 @@
                 dateAgg[item.date] = (dateAgg[item.date] || 0) + item.profit;
             });
 
-            // Top Restros
             const sortedRestros = Object.entries(restroAgg).sort((a,b) => b[1] - a[1]).slice(0, 8);
-            
-            // Date Trend (Sorted)
             const sortedDates = Object.keys(dateAgg).sort();
 
             if(restroChartInstance) restroChartInstance.destroy();
@@ -364,7 +425,7 @@
             });
         }
 
-        // --- FORM & RIDER HELPERS ---
+        // --- FORM & HELPERS ---
         function calcProfit() {
             const total = parseFloat(document.getElementById('totalAmount').value) || 0;
             const price = parseFloat(document.getElementById('itemPrice').value) || 0;
