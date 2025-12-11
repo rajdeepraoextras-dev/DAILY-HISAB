@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurant Sales Tracker (Pro)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         /* --- CSS STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,6 +40,7 @@
         .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(255, 87, 34, 0.3); }
         .btn-secondary { background: white; color: #ff5722; border: 2px solid #ff5722; }
         .btn-clear { background: #9e9e9e; background: linear-gradient(135deg, #757575 0%, #616161 100%); }
+        .btn-invoice { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3); }
 
         /* Stats Grid */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
@@ -139,6 +143,38 @@
                 </form>
             </div>
 
+            <div class="card" style="border-color: #2c3e50; background-color: #f4f6f7;">
+                <h2 style="color: #2c3e50;">🧾 Invoice PDF Generator</h2>
+                <div class="form-grid" style="margin-bottom: 0;">
+                    <div class="form-group">
+                        <label style="color: #2c3e50;">Select Restaurant</label>
+                        <select id="invoiceRestro" required>
+                            <option value="">Select Restaurant for Receipt</option>
+                            <option value="Deep Handi Mutton">Deep Handi Mutton</option>
+                            <option value="7 Star">7 Star</option>
+                            <option value="Ethens">Ethens</option>
+                            <option value="Royal Cafe">Royal Cafe</option>
+                            <option value="Verma Ji Non Veg Restaurant">Verma Ji Non Veg Restaurant</option>
+                            <option value="Maa Vaishno Sweets & Bakers">Maa Vaishno Sweets & Bakers</option>
+                            <option value="Rajshahi">Rajshahi</option>
+                            <option value="Shiva Muradabadi Chicken Biryani">Shiva Muradabadi Chicken Biryani</option>
+                            <option value="Raju Handi Meat">Raju Handi Meat</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #2c3e50;">Start Date</label>
+                        <input type="date" id="invoiceStart">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #2c3e50;">End Date</label>
+                        <input type="date" id="invoiceEnd">
+                    </div>
+                    <div class="form-group" style="justify-content: flex-end;">
+                        <button class="btn btn-invoice" onclick="generateInvoice()">Download PDF Receipt</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>🛵 Daily Riders</h2>
                 <form id="riderSetupForm" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px;">
@@ -190,13 +226,17 @@
                 <div class="stats">
                     <div class="stat-card"><h3>Total Orders</h3><p id="totalEntries">0</p></div>
                     <div class="stat-card"><h3>Total Revenue</h3><p id="totalSales">₹0</p></div>
+                    
+                    <div class="stat-card" style="border-color: #2c3e50;">
+                        <h3 style="color: #2c3e50;">Proj. Month Revenue</h3>
+                        <p id="projRevenue" style="color: #2c3e50;">₹0</p>
+                    </div>
+
                     <div class="stat-card"><h3>Gross Profit</h3><p id="totalGrossProfit">₹0</p></div>
                     <div class="stat-card"><h3>Rider Cost</h3><p id="totalRiderCost" style="color: #c62828;">₹0</p></div>
                     <div class="stat-card"><h3>Net Profit</h3><p id="netProfit" style="color: #2e7d32;">₹0</p></div>
                     
                     <div class="stat-card"><h3>AOV (Avg Order Val)</h3><p id="aov">₹0</p></div>
-                    <div class="stat-card"><h3>Avg Orders/Day</h3><p id="avgOrders">0</p></div>
-                    <div class="stat-card"><h3>Avg Revenue/Day</h3><p id="avgRevenue">₹0</p></div>
                     
                     <div class="stat-card"><h3>Daily Order Growth</h3><div id="growthOrders" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Rev Growth</h3><div id="growthRevenue" class="growth-neutral">—</div></div>
@@ -218,8 +258,6 @@
 
     <script>
         // ============================================================
-        // ✅ YOUR SPECIFIC URL IS ALREADY PASTED BELOW!
-        // ============================================================
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnIWaxlQnDN6J0NAVvuwvC48rhgwc42pikCjDx-0dzy2GetuGnYNmXQLwJkxLMat8l/exec';
         // ============================================================
 
@@ -228,7 +266,6 @@
         let restroChartInstance = null;
         let trendChartInstance = null;
 
-        // --- CORE FUNCTIONS ---
         const showLoader = () => document.getElementById('loader').style.display = 'flex';
         const hideLoader = () => document.getElementById('loader').style.display = 'none';
 
@@ -238,14 +275,12 @@
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
                 
-                // DATA NORMALIZATION (Fixing the Date Issues)
                 allSalesData = data.sales.map(item => {
-                    item.date = normalizeDate(item.date); // Convert all dates to clean YYYY-MM-DD
+                    item.date = normalizeDate(item.date);
                     return item;
                 });
 
                 allRiderData = {};
-                // Normalize dates in rider data keys
                 for (let dateKey in data.riders) {
                     const cleanDate = normalizeDate(dateKey);
                     allRiderData[cleanDate] = data.riders[dateKey];
@@ -260,22 +295,18 @@
             hideLoader();
         }
 
-        // --- HELPER: Fixes Timezone/Format Issues ---
         function normalizeDate(rawDate) {
             if (!rawDate) return "";
-            // If already YYYY-MM-DD string, return it
             if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
                 return rawDate;
             }
-            // If it's a full ISO string or other format, convert to local YYYY-MM-DD
             try {
                 const d = new Date(rawDate);
-                // Adjust for local timezone offset to prevent "off by one day" errors
                 const offset = d.getTimezoneOffset() * 60000;
                 const localDate = new Date(d.getTime() - offset);
                 return localDate.toISOString().split('T')[0];
             } catch(e) {
-                return rawDate; // Fallback
+                return rawDate;
             }
         }
 
@@ -298,10 +329,10 @@
 
         // --- DASHBOARD LOGIC ---
         function updateDashboard() {
-            const filterDate = document.getElementById('filterDate').value; // YYYY-MM-DD
+            const filterDate = document.getElementById('filterDate').value;
             const filterRestro = document.getElementById('filterRestro').value;
 
-            // 1. Filter Sales Data
+            // 1. Filter Sales
             let filteredSales = allSalesData.filter(item => {
                 const dateMatch = filterDate ? item.date === filterDate : true;
                 const restroMatch = filterRestro ? item.restro === filterRestro : true;
@@ -316,38 +347,140 @@
                 Object.values(allRiderData).forEach(dayList => dayList.forEach(r => relevantRiderCost += r.wage));
             }
 
-            // 3. Basic Stats
+            // 3. Stats
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
             const netProfit = totalGross - relevantRiderCost;
             const entryCount = filteredSales.length;
-
-            // 4. Advanced KPIs
             const aov = entryCount > 0 ? (totalRevenue / entryCount) : 0;
-            const uniqueDates = [...new Set(filteredSales.map(s => s.date))].length || 1;
-            const avgOrders = entryCount / uniqueDates;
-            const avgRevenue = totalRevenue / uniqueDates;
 
-            // 5. Growth Metrics
             calculateGrowthMetrics(filteredSales);
+            calculateMonthlyProjection(allSalesData); // Uses full data to calculate current month projection
 
-            // 6. Update UI
             document.getElementById('totalEntries').textContent = entryCount;
             document.getElementById('totalSales').textContent = `₹${totalRevenue.toLocaleString()}`;
             document.getElementById('totalGrossProfit').textContent = `₹${totalGross.toLocaleString()}`;
             document.getElementById('totalRiderCost').textContent = `₹${relevantRiderCost.toLocaleString()}`;
             document.getElementById('netProfit').textContent = `₹${netProfit.toLocaleString()}`;
-            
             document.getElementById('aov').textContent = `₹${aov.toFixed(0)}`;
-            document.getElementById('avgOrders').textContent = avgOrders.toFixed(1);
-            document.getElementById('avgRevenue').textContent = `₹${avgRevenue.toFixed(0)}`;
 
             renderTable(filteredSales);
             renderCharts(filteredSales);
         }
 
+        // --- NEW FEATURE 1: MONTHLY PROJECTION ---
+        function calculateMonthlyProjection(data) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // 0-indexed
+            const currentDay = now.getDate();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Filter data for ONLY current month
+            const currentMonthSales = data.filter(s => {
+                const d = new Date(s.date);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+
+            const currentMonthRevenue = currentMonthSales.reduce((sum, s) => sum + s.totalAmount, 0);
+
+            // Projection Formula: (Current Revenue / Days Passed) * Total Days in Month
+            let projected = 0;
+            if (currentDay > 0) {
+                projected = (currentMonthRevenue / currentDay) * daysInMonth;
+            }
+
+            document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+        }
+
+        // --- NEW FEATURE 2: PDF INVOICE GENERATOR ---
+        function generateInvoice() {
+            const restroName = document.getElementById('invoiceRestro').value;
+            const startDate = document.getElementById('invoiceStart').value;
+            const endDate = document.getElementById('invoiceEnd').value;
+
+            if (!restroName || !startDate || !endDate) {
+                alert("Please select Restaurant, Start Date, and End Date.");
+                return;
+            }
+
+            // Filter Data for Invoice
+            const invoiceData = allSalesData.filter(item => {
+                return item.restro === restroName && item.date >= startDate && item.date <= endDate;
+            });
+
+            if (invoiceData.length === 0) {
+                alert("No sales found for this criteria.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // --- Header ---
+            doc.setFontSize(22);
+            doc.setTextColor(44, 62, 80);
+            doc.text("Payout Statement / Invoice", 14, 20);
+
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text(`Restaurant: ${restroName}`, 14, 30);
+            doc.text(`Period: ${startDate} to ${endDate}`, 14, 36);
+            doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 42);
+
+            // --- Table Data Preparation ---
+            let totalItemAmt = 0;
+            let totalRestroFee = 0;
+            let totalTransFee = 0;
+            let totalPayout = 0;
+
+            const tableRows = invoiceData.map(row => {
+                // Calculation: Payout = Item Price - Restro Fee - (ItemPrice * TransFee%)
+                const transFeeAmt = (row.itemPrice * (row.transactionFees / 100));
+                const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt;
+
+                totalItemAmt += row.itemPrice;
+                totalRestroFee += row.restroPlatformFees;
+                totalTransFee += transFeeAmt;
+                totalPayout += payout;
+
+                return [
+                    row.date,
+                    `Rs ${row.itemPrice.toFixed(2)}`,
+                    `Rs ${row.restroPlatformFees.toFixed(2)}`,
+                    `Rs ${transFeeAmt.toFixed(2)} (${row.transactionFees}%)`,
+                    `Rs ${payout.toFixed(2)}`
+                ];
+            });
+
+            // --- Generate Table ---
+            doc.autoTable({
+                startY: 50,
+                head: [['Date', 'Item Amount', 'Restro Fee', 'Trans. Fee', 'Net Payable']],
+                body: tableRows,
+                theme: 'grid',
+                headStyles: { fillColor: [44, 62, 80] },
+                styles: { fontSize: 10 }
+            });
+
+            // --- Summary Footer ---
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            doc.text(`Total Item Sales: Rs ${totalItemAmt.toFixed(2)}`, 14, finalY);
+            doc.text(`Total Deductions (Fees): Rs ${(totalRestroFee + totalTransFee).toFixed(2)}`, 14, finalY + 7);
+            
+            doc.setFontSize(14);
+            doc.setTextColor(46, 125, 50); // Green color
+            doc.setFont("helvetica", "bold");
+            doc.text(`Final Net Payout: Rs ${totalPayout.toFixed(2)}`, 14, finalY + 16);
+
+            // --- Save File ---
+            doc.save(`${restroName}_Invoice_${startDate}.pdf`);
+        }
+
+        // --- Growth Metrics ---
         function calculateGrowthMetrics(data) {
-            // Group by Date
             const dailyAgg = {};
             data.forEach(s => {
                 if(!dailyAgg[s.date]) dailyAgg[s.date] = { orders: 0, revenue: 0, profit: 0 };
