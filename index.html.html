@@ -24,7 +24,6 @@
         /* Sections */
         .card { background: #fff5f2; border: 2px solid #ff8c42; border-radius: 15px; padding: 25px; margin-bottom: 30px; }
         h2 { color: #ff5722; margin-bottom: 20px; font-size: 1.6em; display: flex; align-items: center; gap: 10px; }
-        h3 { color: #bf360c; margin-bottom: 15px; font-size: 1.1em; }
 
         /* Inputs & Forms */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -392,7 +391,7 @@
             document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
         }
 
-        // --- UPDATED PDF GENERATOR (Fixed Calculation) ---
+        // --- UPDATED PDF GENERATOR (SMART FIX) ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
@@ -443,16 +442,29 @@
             doc.text(`Date Range: ${startDate} to ${endDate}`, rightX, 55);
             doc.text(`Generated On: ${new Date().toLocaleDateString()}`, rightX, 61);
 
-            // 3. Table Logic (Calculation Fix)
+            // 3. Table Logic (SMART FIX)
             let totalItemAmt = 0;
             let totalRestroFee = 0;
             let totalTransFee = 0;
             let totalPayout = 0;
 
             const tableRows = invoiceData.map(row => {
-                // FIXED FORMULA: Amount = ItemPrice * (Rate / 100)
-                const transFeeAmt = (row.itemPrice * (row.transactionFees / 100));
                 
+                let rawRate = row.transactionFees;
+                let effectiveRate, displayPercent;
+
+                // --- SMART LOGIC ---
+                // If the stored value is small (like 0.01), assume it's a decimal format for 1%.
+                // If it's a whole number (like 1), assume it's a percentage format for 1%.
+                if (rawRate < 1 && rawRate > 0) {
+                    effectiveRate = rawRate;        // 0.01 is already the multiplier
+                    displayPercent = (rawRate * 100).toFixed(0); // Display as 1
+                } else {
+                    effectiveRate = rawRate / 100;  // 1 becomes 0.01
+                    displayPercent = rawRate;       // Display as 1
+                }
+
+                const transFeeAmt = row.itemPrice * effectiveRate;
                 const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt;
 
                 totalItemAmt += row.itemPrice;
@@ -464,8 +476,7 @@
                     row.date,
                     `${row.itemPrice.toFixed(2)}`,
                     `${row.restroPlatformFees.toFixed(2)}`,
-                    // Show: Rs 5.00 (1%)
-                    `${transFeeAmt.toFixed(2)} (${row.transactionFees}%)`,
+                    `${transFeeAmt.toFixed(2)} (${displayPercent}%)`, // FIXED DISPLAY
                     `${payout.toFixed(2)}`
                 ];
             });
