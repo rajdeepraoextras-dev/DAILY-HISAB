@@ -43,7 +43,7 @@
         .btn-invoice { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3); }
 
         /* Stats Grid */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: white; border: 1px solid #ffccbc; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .stat-card h3 { font-size: 0.8em; color: #757575; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card p { color: #ff5722; font-size: 1.4em; font-weight: 800; margin: 0; }
@@ -236,8 +236,12 @@
                     <div class="stat-card"><h3>Gross Profit</h3><p id="totalGrossProfit">₹0</p></div>
                     <div class="stat-card"><h3>Rider Cost</h3><p id="totalRiderCost" style="color: #c62828;">₹0</p></div>
                     <div class="stat-card"><h3>Net Profit</h3><p id="netProfit" style="color: #2e7d32;">₹0</p></div>
+                    <div class="stat-card"><h3>Net Margin</h3><p id="netMargin" style="color: #2e7d32;">0%</p></div>
                     
-                    <div class="stat-card"><h3>AOV (Avg Order Val)</h3><p id="aov">₹0</p></div>
+                    <div class="stat-card"><h3>Avg Orders/Day</h3><p id="avgOrdersPerDay">0</p></div>
+                    <div class="stat-card"><h3>Avg Revenue/Day</h3><p id="avgRevenuePerDay">₹0</p></div>
+                    <div class="stat-card"><h3>Avg Profit/Order</h3><p id="avgProfitPerOrder">₹0</p></div>
+                    <div class="stat-card"><h3>AOV (Order Val)</h3><p id="aov">₹0</p></div>
                     
                     <div class="stat-card"><h3>Daily Order Growth</h3><div id="growthOrders" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Rev Growth</h3><div id="growthRevenue" class="growth-neutral">—</div></div>
@@ -348,21 +352,36 @@
                 Object.values(allRiderData).forEach(dayList => dayList.forEach(r => relevantRiderCost += r.wage));
             }
 
-            // 3. Stats
+            // 3. Basic Stats
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
             const netProfit = totalGross - relevantRiderCost;
             const entryCount = filteredSales.length;
+
+            // 4. NEW KPI CALCULATIONS
+            const uniqueDates = new Set(filteredSales.map(s => s.date)).size || 1;
+            
+            const avgOrdersPerDay = entryCount > 0 ? (entryCount / uniqueDates) : 0;
+            const avgRevenuePerDay = totalRevenue > 0 ? (totalRevenue / uniqueDates) : 0;
+            const netMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+            const avgProfitPerOrder = entryCount > 0 ? (netProfit / entryCount) : 0;
             const aov = entryCount > 0 ? (totalRevenue / entryCount) : 0;
 
             calculateGrowthMetrics(filteredSales);
             calculateMonthlyProjection(allSalesData);
 
+            // 5. UPDATE UI
             document.getElementById('totalEntries').textContent = entryCount;
             document.getElementById('totalSales').textContent = `₹${totalRevenue.toLocaleString()}`;
             document.getElementById('totalGrossProfit').textContent = `₹${totalGross.toLocaleString()}`;
             document.getElementById('totalRiderCost').textContent = `₹${relevantRiderCost.toLocaleString()}`;
             document.getElementById('netProfit').textContent = `₹${netProfit.toLocaleString()}`;
+            
+            // New UI Updates
+            document.getElementById('avgOrdersPerDay').textContent = avgOrdersPerDay.toFixed(1);
+            document.getElementById('avgRevenuePerDay').textContent = `₹${avgRevenuePerDay.toFixed(0)}`;
+            document.getElementById('netMargin').textContent = `${netMargin.toFixed(1)}%`;
+            document.getElementById('avgProfitPerOrder').textContent = `₹${avgProfitPerOrder.toFixed(1)}`;
             document.getElementById('aov').textContent = `₹${aov.toFixed(0)}`;
 
             renderTable(filteredSales);
@@ -391,7 +410,7 @@
             document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
         }
 
-        // --- NEW IMPROVED PDF GENERATOR ---
+        // --- PDF GENERATOR (Appealing Version) ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
@@ -414,27 +433,20 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // --- THEME COLORS ---
-            const primaryColor = [255, 87, 34]; // Deep Orange
-            const darkColor = [44, 62, 80];     // Dark Blue/Grey
-            const lightGrey = [245, 245, 245];
+            const primaryColor = [255, 87, 34];
+            const darkColor = [44, 62, 80];
 
-            // 1. TOP BAR
             doc.setFillColor(...darkColor);
-            doc.rect(0, 0, 210, 8, 'F'); // Thin dark top strip
+            doc.rect(0, 0, 210, 8, 'F');
 
-            // 2. HEADER SECTION
             doc.setFillColor(255, 255, 255);
-            
-            // "Logo" / Initial Box
             doc.setFillColor(...primaryColor);
             doc.roundedRect(14, 20, 20, 20, 3, 3, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("KR", 18, 33); // Khanago / RAAOSKG Initials
+            doc.text("KR", 18, 33);
 
-            // Company Name
             doc.setTextColor(...darkColor);
             doc.setFontSize(22);
             doc.text("Khanago", 40, 28);
@@ -443,7 +455,6 @@
             doc.setFont("helvetica", "normal");
             doc.text("RAAOSKG Techspark LLP", 40, 34);
 
-            // Invoice Label
             doc.setFontSize(28);
             doc.setTextColor(...primaryColor);
             doc.text("PAYOUT", 195, 30, { align: "right" });
@@ -451,32 +462,27 @@
             doc.setTextColor(150);
             doc.text("STATEMENT / INVOICE", 195, 36, { align: "right" });
 
-            // 3. BILLING INFO (Gray Box)
             doc.setFillColor(250, 250, 250);
             doc.roundedRect(14, 50, 182, 35, 2, 2, 'F');
             doc.setDrawColor(220);
-            doc.roundedRect(14, 50, 182, 35, 2, 2, 'S'); // Stroke
+            doc.roundedRect(14, 50, 182, 35, 2, 2, 'S');
 
             doc.setTextColor(...darkColor);
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
             doc.text("RESTAURANT DETAILS:", 20, 60);
-            
             doc.setFont("helvetica", "normal");
             doc.setFontSize(12);
             doc.text(restroName, 20, 70);
             
-            // Right Side Details
             doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
             doc.text("Statement Date:", 120, 60);
             doc.text("Period:", 120, 70);
-            
             doc.setFont("helvetica", "normal");
             doc.text(new Date().toLocaleDateString(), 160, 60);
             doc.text(`${startDate} to ${endDate}`, 160, 70);
 
-            // 4. TABLE LOGIC
             let totalItemAmt = 0;
             let totalRestroFee = 0;
             let totalTransFee = 0;
@@ -500,7 +506,6 @@
                 ];
             });
 
-            // 5. DRAW TABLE
             doc.autoTable({
                 startY: 95,
                 head: [['Date', 'Item Amount (Rs)', 'Platform Fee', 'Trans. Fee', 'Net Payable']],
@@ -512,10 +517,7 @@
                     fontStyle: 'bold',
                     halign: 'left'
                 },
-                bodyStyles: {
-                    textColor: [50, 50, 50],
-                    fontSize: 9
-                },
+                bodyStyles: { textColor: [50, 50, 50], fontSize: 9 },
                 columnStyles: {
                     0: { cellWidth: 35 },
                     4: { fontStyle: 'bold', textColor: [30, 30, 30], halign: 'right' },
@@ -524,35 +526,27 @@
                     3: { halign: 'right' }
                 },
                 styles: { cellPadding: 6 },
-                alternateRowStyles: { fillColor: [255, 250, 248] } // Very light orange tint
+                alternateRowStyles: { fillColor: [255, 250, 248] }
             });
 
-            // 6. SUMMARY SECTION
             const finalY = doc.lastAutoTable.finalY + 10;
             const summaryX = 110; 
 
-            // Divider Line
             doc.setDrawColor(...primaryColor);
             doc.setLineWidth(0.5);
             doc.line(14, finalY, 196, finalY);
 
-            // Totals
             doc.setFontSize(10);
             doc.setTextColor(80, 80, 80);
-            
             doc.text(`Total Sales Amount:`, summaryX, finalY + 10);
             doc.text(`${totalItemAmt.toFixed(2)}`, 195, finalY + 10, { align: "right" });
-
             doc.text(`Platform Fees Deducted:`, summaryX, finalY + 16);
             doc.text(`- ${totalRestroFee.toFixed(2)}`, 195, finalY + 16, { align: "right" });
-
             doc.text(`Transaction Fees Deducted:`, summaryX, finalY + 22);
             doc.text(`- ${totalTransFee.toFixed(2)}`, 195, finalY + 22, { align: "right" });
 
-            // Grand Total Box
             doc.setFillColor(...primaryColor);
             doc.roundedRect(summaryX - 5, finalY + 30, 96, 14, 2, 2, 'F');
-            
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
@@ -560,13 +554,10 @@
             doc.setFontSize(14);
             doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 39, { align: "right" });
 
-            // 7. FOOTER STAMP
             doc.setFontSize(10);
             doc.setTextColor(150);
             doc.setFont("helvetica", "italic");
             doc.text("Authorized by Khanago Finance Dept.", 14, finalY + 60);
-
-            // Page Footer
             doc.setFontSize(8);
             doc.text("Generated by Khanago System • This is a computer-generated invoice.", 105, 285, { align: "center" });
 
