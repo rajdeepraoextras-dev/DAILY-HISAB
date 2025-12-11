@@ -40,7 +40,7 @@
         .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(255, 87, 34, 0.3); }
         .btn-secondary { background: white; color: #ff5722; border: 2px solid #ff5722; }
         .btn-clear { background: #9e9e9e; background: linear-gradient(135deg, #757575 0%, #616161 100%); }
-        .btn-invoice { background: linear-gradient(135deg, #ff5722 0%, #ff8f00 100%); box-shadow: 0 4px 10px rgba(255, 87, 34, 0.3); }
+        .btn-invoice { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3); }
 
         /* Stats Grid */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
@@ -144,8 +144,8 @@
                 </form>
             </div>
 
-            <div class="card" style="border-color: #ff5722; background-color: #fffaf9;">
-                <h2 style="color: #ff5722;">🧾 Invoice PDF Generator</h2>
+            <div class="card" style="border-color: #2c3e50; background-color: #f8f9fa;">
+                <h2 style="color: #2c3e50;">🧾 Invoice PDF Generator</h2>
                 <div class="form-grid" style="margin-bottom: 0;">
                     <div class="form-group">
                         <label>Select Restaurant</label>
@@ -391,7 +391,7 @@
             document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
         }
 
-        // --- UPDATED PDF GENERATOR (SMART FIX) ---
+        // --- NEW IMPROVED PDF GENERATOR ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
@@ -414,57 +414,76 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // 1. Header
-            doc.setFillColor(255, 87, 34); // #ff5722
-            doc.rect(0, 0, 210, 40, 'F');
+            // --- THEME COLORS ---
+            const primaryColor = [255, 87, 34]; // Deep Orange
+            const darkColor = [44, 62, 80];     // Dark Blue/Grey
+            const lightGrey = [245, 245, 245];
 
+            // 1. TOP BAR
+            doc.setFillColor(...darkColor);
+            doc.rect(0, 0, 210, 8, 'F'); // Thin dark top strip
+
+            // 2. HEADER SECTION
+            doc.setFillColor(255, 255, 255);
+            
+            // "Logo" / Initial Box
+            doc.setFillColor(...primaryColor);
+            doc.roundedRect(14, 20, 20, 20, 3, 3, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("Khanago : RAAOSKG Techspark LLP", 14, 25);
+            doc.text("KR", 18, 33); // Khanago / RAAOSKG Initials
 
-            doc.setFontSize(20);
-            doc.text("PAYOUT STATEMENT", 195, 25, { align: "right" });
-
-            // 2. Info
-            doc.setTextColor(40, 40, 40);
+            // Company Name
+            doc.setTextColor(...darkColor);
+            doc.setFontSize(22);
+            doc.text("Khanago", 40, 28);
             doc.setFontSize(10);
+            doc.setTextColor(100);
             doc.setFont("helvetica", "normal");
-            
+            doc.text("RAAOSKG Techspark LLP", 40, 34);
+
+            // Invoice Label
+            doc.setFontSize(28);
+            doc.setTextColor(...primaryColor);
+            doc.text("PAYOUT", 195, 30, { align: "right" });
+            doc.setFontSize(10);
+            doc.setTextColor(150);
+            doc.text("STATEMENT / INVOICE", 195, 36, { align: "right" });
+
+            // 3. BILLING INFO (Gray Box)
+            doc.setFillColor(250, 250, 250);
+            doc.roundedRect(14, 50, 182, 35, 2, 2, 'F');
+            doc.setDrawColor(220);
+            doc.roundedRect(14, 50, 182, 35, 2, 2, 'S'); // Stroke
+
+            doc.setTextColor(...darkColor);
+            doc.setFontSize(10);
             doc.setFont("helvetica", "bold");
-            doc.text("BILL TO:", 14, 55);
+            doc.text("RESTAURANT DETAILS:", 20, 60);
+            
             doc.setFont("helvetica", "normal");
             doc.setFontSize(12);
-            doc.text(restroName, 14, 62);
-
+            doc.text(restroName, 20, 70);
+            
+            // Right Side Details
             doc.setFontSize(10);
-            const rightX = 140;
-            doc.text(`Date Range: ${startDate} to ${endDate}`, rightX, 55);
-            doc.text(`Generated On: ${new Date().toLocaleDateString()}`, rightX, 61);
+            doc.setFont("helvetica", "bold");
+            doc.text("Statement Date:", 120, 60);
+            doc.text("Period:", 120, 70);
+            
+            doc.setFont("helvetica", "normal");
+            doc.text(new Date().toLocaleDateString(), 160, 60);
+            doc.text(`${startDate} to ${endDate}`, 160, 70);
 
-            // 3. Table Logic (SMART FIX)
+            // 4. TABLE LOGIC
             let totalItemAmt = 0;
             let totalRestroFee = 0;
             let totalTransFee = 0;
             let totalPayout = 0;
 
             const tableRows = invoiceData.map(row => {
-                
-                let rawRate = row.transactionFees;
-                let effectiveRate, displayPercent;
-
-                // --- SMART LOGIC ---
-                // If the stored value is small (like 0.01), assume it's a decimal format for 1%.
-                // If it's a whole number (like 1), assume it's a percentage format for 1%.
-                if (rawRate < 1 && rawRate > 0) {
-                    effectiveRate = rawRate;        // 0.01 is already the multiplier
-                    displayPercent = (rawRate * 100).toFixed(0); // Display as 1
-                } else {
-                    effectiveRate = rawRate / 100;  // 1 becomes 0.01
-                    displayPercent = rawRate;       // Display as 1
-                }
-
-                const transFeeAmt = row.itemPrice * effectiveRate;
+                const transFeeAmt = (row.itemPrice * row.transactionFees) / 100;
                 const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt;
 
                 totalItemAmt += row.itemPrice;
@@ -476,56 +495,82 @@
                     row.date,
                     `${row.itemPrice.toFixed(2)}`,
                     `${row.restroPlatformFees.toFixed(2)}`,
-                    `${transFeeAmt.toFixed(2)} (${displayPercent}%)`, // FIXED DISPLAY
+                    `${transFeeAmt.toFixed(2)}  (${row.transactionFees}%)`,
                     `${payout.toFixed(2)}`
                 ];
             });
 
-            // 4. Generate Table
+            // 5. DRAW TABLE
             doc.autoTable({
-                startY: 75,
+                startY: 95,
                 head: [['Date', 'Item Amount (Rs)', 'Platform Fee', 'Trans. Fee', 'Net Payable']],
                 body: tableRows,
                 theme: 'grid',
                 headStyles: { 
-                    fillColor: [255, 87, 34], 
+                    fillColor: primaryColor, 
                     textColor: [255, 255, 255], 
-                    fontStyle: 'bold' 
+                    fontStyle: 'bold',
+                    halign: 'left'
+                },
+                bodyStyles: {
+                    textColor: [50, 50, 50],
+                    fontSize: 9
                 },
                 columnStyles: {
                     0: { cellWidth: 35 },
-                    4: { fontStyle: 'bold', textColor: [40, 40, 40] }
+                    4: { fontStyle: 'bold', textColor: [30, 30, 30], halign: 'right' },
+                    1: { halign: 'right' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' }
                 },
-                styles: { fontSize: 10, cellPadding: 4 }
+                styles: { cellPadding: 6 },
+                alternateRowStyles: { fillColor: [255, 250, 248] } // Very light orange tint
             });
 
-            // 5. Summary Footer
+            // 6. SUMMARY SECTION
             const finalY = doc.lastAutoTable.finalY + 10;
-            const summaryX = 120; 
+            const summaryX = 110; 
 
-            doc.setFontSize(11);
+            // Divider Line
+            doc.setDrawColor(...primaryColor);
+            doc.setLineWidth(0.5);
+            doc.line(14, finalY, 196, finalY);
+
+            // Totals
+            doc.setFontSize(10);
             doc.setTextColor(80, 80, 80);
-            doc.text(`Total Item Sales:`, summaryX, finalY);
-            doc.text(`Rs ${totalItemAmt.toFixed(2)}`, 195, finalY, { align: "right" });
+            
+            doc.text(`Total Sales Amount:`, summaryX, finalY + 10);
+            doc.text(`${totalItemAmt.toFixed(2)}`, 195, finalY + 10, { align: "right" });
 
-            doc.text(`Total Fees Deducted:`, summaryX, finalY + 7);
-            doc.text(`- Rs ${(totalRestroFee + totalTransFee).toFixed(2)}`, 195, finalY + 7, { align: "right" });
+            doc.text(`Platform Fees Deducted:`, summaryX, finalY + 16);
+            doc.text(`- ${totalRestroFee.toFixed(2)}`, 195, finalY + 16, { align: "right" });
 
-            doc.setFillColor(255, 245, 242); 
-            doc.rect(summaryX - 5, finalY + 12, 90, 12, 'F');
+            doc.text(`Transaction Fees Deducted:`, summaryX, finalY + 22);
+            doc.text(`- ${totalTransFee.toFixed(2)}`, 195, finalY + 22, { align: "right" });
 
-            doc.setTextColor(255, 87, 34);
-            doc.setFontSize(14);
+            // Grand Total Box
+            doc.setFillColor(...primaryColor);
+            doc.roundedRect(summaryX - 5, finalY + 30, 96, 14, 2, 2, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text(`Net Payout:`, summaryX, finalY + 20);
-            doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 20, { align: "right" });
+            doc.text("NET PAYABLE AMOUNT:", summaryX, finalY + 39);
+            doc.setFontSize(14);
+            doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 39, { align: "right" });
 
-            doc.setFontSize(9);
+            // 7. FOOTER STAMP
+            doc.setFontSize(10);
             doc.setTextColor(150);
             doc.setFont("helvetica", "italic");
-            doc.text("Thank you for partnering with Khanago.", 14, 280);
+            doc.text("Authorized by Khanago Finance Dept.", 14, finalY + 60);
 
-            doc.save(`Payout_${restroName}_${startDate}.pdf`);
+            // Page Footer
+            doc.setFontSize(8);
+            doc.text("Generated by Khanago System • This is a computer-generated invoice.", 105, 285, { align: "center" });
+
+            doc.save(`Payout_${restroName.replace(/\s+/g, '_')}_${startDate}.pdf`);
         }
 
         // --- Growth Metrics ---
@@ -639,9 +684,6 @@
             const transFeeAmt = (price * rate) / 100;
             document.getElementById('transFeeCalc').innerText = `${rate}% = ₹${transFeeAmt.toFixed(2)}`;
 
-            // Profit = My Earnings (RestroFee + TransFeeSlice) + (Total - Price [which is Delivery Charge])
-            // Note: Adjust this logic if 'profit' has a different business definition for you.
-            // Currently: Profit = (CustomerTotal - ItemPrice) + RestroFee + MyCutOfItemPrice
             const profit = (total - price) + restroFee + transFeeAmt;
             
             document.getElementById('profit').value = profit.toFixed(2);
