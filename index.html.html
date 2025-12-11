@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restaurant Sales Tracker (Ultimate)</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -375,8 +376,7 @@
             let totalTransFee = 0;
 
             invoiceData.forEach(row => {
-                // Calculate Transaction Fee Amount (Since it's not stored directly in frontend obj, usually)
-                // If your object has it, use row.transFeeAmount. If not, calc it:
+                // Calculate Transaction Fee Amount (calculated on frontend)
                 const transFeeAmt = (row.itemPrice * row.transactionFees) / 100;
                 
                 tableRows.push([
@@ -407,9 +407,6 @@
             doc.text(`Total Item Amount: Rs ${totalItemAmt.toFixed(2)}`, 14, finalY);
             doc.text(`Total Restro Fees: Rs ${totalRestroFee.toFixed(2)}`, 14, finalY + 7);
             doc.text(`Total Transaction Fees: Rs ${totalTransFee.toFixed(2)}`, 14, finalY + 14);
-
-            const totalPayable = totalItemAmt - totalRestroFee - totalTransFee; // Example calculation logic
-            // You can adjust the "Total Payable" formula as per your business logic
             
             doc.save(`Invoice_${restroName}_${startDate}.pdf`);
         }
@@ -448,7 +445,7 @@
 
             // 5. Growth & Projection
             calculateGrowthMetrics(filteredSales);
-            calculateProjection(allSalesData); // Projections use ALL data for current month context
+            calculateProjection(allSalesData);
 
             // 6. UI Update
             document.getElementById('totalEntries').textContent = entryCount;
