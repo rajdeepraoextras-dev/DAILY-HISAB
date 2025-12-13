@@ -128,6 +128,11 @@
                             <span id="transFeeCalc" class="calc-hint">1% = ₹0.00</span>
                         </div>
                         <div class="form-group">
+                            <label>Commission (%)</label>
+                            <input type="number" id="commission" step="0.01" value="0" required>
+                            <span id="commissionCalc" class="calc-hint">0% = ₹0.00</span>
+                        </div>
+                        <div class="form-group">
                             <label>Cust. Platform Fees</label>
                             <input type="number" id="customerPlatformFees" step="0.01" value="0" required>
                         </div>
@@ -266,7 +271,7 @@
 
     <script>
         // ============================================================
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnIWaxlQnDN6J0NAVvuwvC48rhgwc42pikCjDx-0dzy2GetuGnYNmXQLwJkxLMat8l/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjm56WHGw2WMnFTRbNI5e2YIkpwNormA51WO0IDsPgyrLs5qBhgf5rh9vYfnmR_dc/exec';
         // ============================================================
 
         let allSalesData = [];
@@ -489,15 +494,18 @@
             let totalItemAmt = 0;
             let totalRestroFee = 0;
             let totalTransFee = 0;
+            let totalCommission = 0;
             let totalPayout = 0;
 
             const tableRows = invoiceData.map(row => {
                 const transFeeAmt = (row.itemPrice * row.transactionFees) / 100;
-                const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt;
+                const commissionAmt = (row.itemPrice * (row.commission || 0)) / 100;
+                const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt - commissionAmt;
 
                 totalItemAmt += row.itemPrice;
                 totalRestroFee += row.restroPlatformFees;
                 totalTransFee += transFeeAmt;
+                totalCommission += commissionAmt;
                 totalPayout += payout;
 
                 return [
@@ -505,13 +513,14 @@
                     `${row.itemPrice.toFixed(2)}`,
                     `${row.restroPlatformFees.toFixed(2)}`,
                     `${transFeeAmt.toFixed(2)}  (${row.transactionFees}%)`,
+                    `${commissionAmt.toFixed(2)}  (${row.commission || 0}%)`,
                     `${payout.toFixed(2)}`
                 ];
             });
 
             doc.autoTable({
                 startY: 95,
-                head: [['Date', 'Item Amount (Rs)', 'Platform Fee', 'Trans. Fee', 'Net Payable']],
+                head: [['Date', 'Item Amount (Rs)', 'Platform Fee', 'Trans. Fee', 'Commission', 'Net Payable']],
                 body: tableRows,
                 theme: 'grid',
                 headStyles: { 
@@ -522,13 +531,14 @@
                 },
                 bodyStyles: { textColor: [50, 50, 50], fontSize: 9 },
                 columnStyles: {
-                    0: { cellWidth: 35 },
-                    4: { fontStyle: 'bold', textColor: [30, 30, 30], halign: 'right' },
+                    0: { cellWidth: 30 },
+                    5: { fontStyle: 'bold', textColor: [30, 30, 30], halign: 'right' },
                     1: { halign: 'right' },
                     2: { halign: 'right' },
-                    3: { halign: 'right' }
+                    3: { halign: 'right' },
+                    4: { halign: 'right' }
                 },
-                styles: { cellPadding: 6 },
+                styles: { cellPadding: 5 },
                 alternateRowStyles: { fillColor: [255, 250, 248] }
             });
 
@@ -547,20 +557,22 @@
             doc.text(`- ${totalRestroFee.toFixed(2)}`, 195, finalY + 16, { align: "right" });
             doc.text(`Transaction Fees Deducted:`, summaryX, finalY + 22);
             doc.text(`- ${totalTransFee.toFixed(2)}`, 195, finalY + 22, { align: "right" });
+            doc.text(`Commission Deducted:`, summaryX, finalY + 28);
+            doc.text(`- ${totalCommission.toFixed(2)}`, 195, finalY + 28, { align: "right" });
 
             doc.setFillColor(...primaryColor);
-            doc.roundedRect(summaryX - 5, finalY + 30, 96, 14, 2, 2, 'F');
+            doc.roundedRect(summaryX - 5, finalY + 36, 96, 14, 2, 2, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("NET PAYABLE AMOUNT:", summaryX, finalY + 39);
+            doc.text("NET PAYABLE AMOUNT:", summaryX, finalY + 45);
             doc.setFontSize(14);
-            doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 39, { align: "right" });
+            doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 45, { align: "right" });
 
             doc.setFontSize(10);
             doc.setTextColor(150);
             doc.setFont("helvetica", "italic");
-            doc.text("Authorized by Khanago Finance Dept.", 14, finalY + 60);
+            doc.text("Authorized by Khanago Finance Dept.", 14, finalY + 66);
             doc.setFontSize(8);
             doc.text("Generated by Khanago System • This is a computer-generated invoice.", 105, 285, { align: "center" });
 
@@ -672,17 +684,21 @@
             const total = parseFloat(document.getElementById('totalAmount').value) || 0;
             const price = parseFloat(document.getElementById('itemPrice').value) || 0;
             const rate = parseFloat(document.getElementById('transactionFees').value) || 0;
+            const commission = parseFloat(document.getElementById('commission').value) || 0;
             const restroFee = parseFloat(document.getElementById('restroPlatformFees').value) || 0;
             
-            // Calculate Amount for Display
+            // Calculate Amounts for Display
             const transFeeAmt = (price * rate) / 100;
+            const commissionAmt = (price * commission) / 100;
+            
             document.getElementById('transFeeCalc').innerText = `${rate}% = ₹${transFeeAmt.toFixed(2)}`;
+            document.getElementById('commissionCalc').innerText = `${commission}% = ₹${commissionAmt.toFixed(2)}`;
 
-            const profit = (total - price) + restroFee + transFeeAmt;
+            const profit = (total - price) + restroFee + transFeeAmt + commissionAmt;
             
             document.getElementById('profit').value = profit.toFixed(2);
         }
-        ['totalAmount','itemPrice','transactionFees'].forEach(id => document.getElementById(id).addEventListener('input', calcProfit));
+        ['totalAmount','itemPrice','transactionFees','commission'].forEach(id => document.getElementById(id).addEventListener('input', calcProfit));
 
         document.getElementById('salesForm').addEventListener('submit', e => {
             e.preventDefault();
@@ -692,6 +708,7 @@
                 totalAmount: parseFloat(document.getElementById('totalAmount').value),
                 itemPrice: parseFloat(document.getElementById('itemPrice').value),
                 transactionFees: parseFloat(document.getElementById('transactionFees').value),
+                commission: parseFloat(document.getElementById('commission').value),
                 customerPlatformFees: parseFloat(document.getElementById('customerPlatformFees').value),
                 restroPlatformFees: parseFloat(document.getElementById('restroPlatformFees').value),
                 profit: parseFloat(document.getElementById('profit').value)
@@ -701,6 +718,7 @@
             e.target.reset();
             document.getElementById('date').value = d;
             document.getElementById('transactionFees').value = 1; 
+            document.getElementById('commission').value = 0;
             document.getElementById('restroPlatformFees').value = 2;
         });
 
