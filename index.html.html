@@ -11,7 +11,7 @@
     <style>
         /* --- CSS STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); min-height: 100vh; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); min-height: 10vh; padding: 20px; color: #333; }
         
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
         
@@ -65,8 +65,13 @@
         .delete-btn { background: #ffebee; color: #c62828; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8em; }
         .delete-btn:hover { background: #ef5350; color: white; }
 
-        /* Charts */
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 30px; }
+        /* Charts - Adjusted for 3 charts */
+        .charts-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+            margin-top: 30px; 
+        }
         .chart-box { background: white; padding: 20px; border-radius: 12px; border: 1px solid #ffccbc; height: 320px; }
 
         /* Loader */
@@ -258,7 +263,7 @@
 
                 <div class="charts-grid">
                     <div class="chart-box"><canvas id="restroChart"></canvas></div>
-                    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+                    <div class="chart-box"><canvas id="ordersChart"></canvas></div> <div class="chart-box"><canvas id="trendChart"></canvas></div>
                 </div>
 
                 <h3 style="margin-top: 40px;">Detailed Records</h3>
@@ -275,9 +280,10 @@
         // ============================================================
 
         let allSalesData = [];
-        let allRiderData = {}; 
+        let allRiderData = {};
         let restroChartInstance = null;
         let trendChartInstance = null;
+        let ordersChartInstance = null; // New Chart Instance Variable
 
         const showLoader = () => document.getElementById('loader').style.display = 'flex';
         const hideLoader = () => document.getElementById('loader').style.display = 'none';
@@ -646,17 +652,22 @@
         function renderCharts(data) {
             const ctxRestro = document.getElementById('restroChart').getContext('2d');
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            const ctxOrders = document.getElementById('ordersChart').getContext('2d');
             
             const restroAgg = {};
             const dateAgg = {};
+            const dailyOrderCount = {}; // New aggregation for daily order count
 
             data.forEach(item => {
                 restroAgg[item.restro] = (restroAgg[item.restro] || 0) + item.profit;
                 dateAgg[item.date] = (dateAgg[item.date] || 0) + item.profit;
+                dailyOrderCount[item.date] = (dailyOrderCount[item.date] || 0) + 1; // Aggregate daily order count
             });
 
             const sortedRestros = Object.entries(restroAgg).sort((a,b) => b[1] - a[1]).slice(0, 8);
             const sortedDates = Object.keys(dateAgg).sort();
+            const sortedDatesOrders = Object.keys(dailyOrderCount).sort(); // Get sorted dates for order data
+
 
             if(restroChartInstance) restroChartInstance.destroy();
             restroChartInstance = new Chart(ctxRestro, {
@@ -666,6 +677,37 @@
                     datasets: [{ label: 'Profit (₹)', data: sortedRestros.map(x => x[1]), backgroundColor: '#ff8c42', borderRadius: 4 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, title: {display:true, text:'Top Restaurants by Profit'} } }
+            });
+
+            // Initialize the new Daily Orders Chart
+            if(ordersChartInstance) ordersChartInstance.destroy();
+            ordersChartInstance = new Chart(ctxOrders, {
+                type: 'bar',
+                data: {
+                    labels: sortedDatesOrders,
+                    datasets: [{ 
+                        label: 'Daily Orders', 
+                        data: sortedDatesOrders.map(d => dailyOrderCount[d]), 
+                        backgroundColor: '#ff5722', 
+                        borderRadius: 4 
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: {display:false}, 
+                        title: {display:true, text:'Daily Orders by Date'} 
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) { if (value % 1 === 0) return value; } // Show only integers
+                            }
+                        }
+                    }
+                }
             });
 
             if(trendChartInstance) trendChartInstance.destroy();
