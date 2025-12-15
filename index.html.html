@@ -88,11 +88,29 @@
             border: 1px solid #ffccbc; 
             height: 320px; 
         }
-
-        /* Loader */
-        .loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #ffccbc; border-top-color: #ff5722; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Weekly Stats Table */
+        .weekly-comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        .weekly-comparison-table th, .weekly-comparison-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ffccbc;
+        }
+        .weekly-comparison-table thead th {
+            background-color: #ff5722;
+            color: white;
+        }
+        .weekly-comparison-table tbody th {
+            background-color: #ffccbc;
+            text-align: left;
+            font-weight: bold;
+            width: 30%;
+        }
     </style>
 </head>
 <body>
@@ -168,6 +186,42 @@
                     <button type="submit" class="btn">Add Sale</button>
                     <button type="button" class="btn btn-secondary" onclick="loadData()">🔄 Refresh</button>
                 </form>
+            </div>
+
+            <div class="card">
+                <h2>📈 Weekly Performance (Fri-Thu)</h2>
+                <div id="weeklyComparisonContainer">
+                    <table class="weekly-comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th id="cwPeriod">Current Week</th>
+                                <th id="pwPeriod">Previous Week</th>
+                                <th>% Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>Total Orders</th>
+                                <td id="cwOrders">0</td>
+                                <td id="pwOrders">0</td>
+                                <td id="wowOrders" class="growth-neutral">—</td>
+                            </tr>
+                            <tr>
+                                <th>Total Revenue</th>
+                                <td id="cwRevenue">₹0</td>
+                                <td id="pwRevenue">₹0</td>
+                                <td id="wowRevenue" class="growth-neutral">—</td>
+                            </tr>
+                            <tr>
+                                <th>Gross Profit</th>
+                                <td id="cwProfit">₹0</td>
+                                <td id="pwProfit">₹0</td>
+                                <td id="wowProfit" class="growth-neutral">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="card" style="border-color: #2c3e50; background-color: #f8f9fa;">
@@ -402,6 +456,7 @@
 
             calculateGrowthMetrics(filteredSales);
             calculateMonthlyProjection(allSalesData);
+            calculateWeeklyComparison(); // <--- NEW CALL
 
             // 5. UPDATE UI
             document.getElementById('totalEntries').textContent = entryCount;
@@ -420,6 +475,81 @@
             renderTable(filteredSales);
             renderCharts(filteredSales);
         }
+        
+        // --- NEW WEEKLY COMPARISON LOGIC ---
+        function calculateWeeklyComparison() {
+            // Helper to get date string in YYYY-MM-DD format
+            const dateToISO = (date) => date.toISOString().split('T')[0];
+            
+            // 1. Determine Current Week (CW) and Previous Week (PW)
+            const today = new Date();
+            // Start of the week is Friday (5). The day of the week (0=Sun, 1=Mon... 6=Sat)
+            // Adjust to find the most recent Friday or earlier.
+            const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+            const dayOffset = (dayOfWeek < 5) ? dayOfWeek + 2 : dayOfWeek - 5; // Days back to last Friday
+            
+            const cwStart = new Date(today);
+            cwStart.setDate(today.getDate() - dayOffset); // Last Friday
+            
+            const cwEnd = new Date(cwStart);
+            cwEnd.setDate(cwStart.getDate() + 6); // Next Thursday (the end of the CW cycle)
+            
+            const pwStart = new Date(cwStart);
+            pwStart.setDate(cwStart.getDate() - 7); // Friday before last
+            
+            const pwEnd = new Date(cwEnd);
+            pwEnd.setDate(cwEnd.getDate() - 7); // Thursday before last
+
+            // Formatting for UI
+            const cwPeriodStr = `${dateToISO(cwStart)} to ${dateToISO(cwEnd)}`;
+            const pwPeriodStr = `${dateToISO(pwStart)} to ${dateToISO(pwEnd)}`;
+
+            // 2. Filter data for CW and PW
+            const cwData = allSalesData.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate >= cwStart && itemDate <= cwEnd;
+            });
+
+            const pwData = allSalesData.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate >= pwStart && itemDate <= pwEnd;
+            });
+
+            // 3. Aggregate Metrics
+            const cwOrders = cwData.length;
+            const cwRevenue = cwData.reduce((sum, s) => sum + s.totalAmount, 0);
+            const cwProfit = cwData.reduce((sum, s) => sum + s.profit, 0);
+
+            const pwOrders = pwData.length;
+            const pwRevenue = pwData.reduce((sum, s) => sum + s.totalAmount, 0);
+            const pwProfit = pwData.reduce((sum, s) => sum + s.profit, 0);
+
+            // 4. Calculate WoW Change
+            const calculateChange = (current, previous) => {
+                if (previous === 0) return current > 0 ? Infinity : 0;
+                return ((current - previous) / previous) * 100;
+            };
+
+            const wowOrders = calculateChange(cwOrders, pwOrders);
+            const wowRevenue = calculateChange(cwRevenue, pwRevenue);
+            const wowProfit = calculateChange(cwProfit, pwProfit);
+
+            // 5. Update UI
+            document.getElementById('cwPeriod').textContent = cwPeriodStr;
+            document.getElementById('pwPeriod').textContent = pwPeriodStr;
+
+            document.getElementById('cwOrders').textContent = cwOrders;
+            document.getElementById('pwOrders').textContent = pwOrders;
+            updateGrowthUI('wowOrders', wowOrders, ' Orders');
+
+            document.getElementById('cwRevenue').textContent = `₹${cwRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            document.getElementById('pwRevenue').textContent = `₹${pwRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            updateGrowthUI('wowRevenue', wowRevenue, ' Rev');
+
+            document.getElementById('cwProfit').textContent = `₹${cwProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            document.getElementById('pwProfit').textContent = `₹${pwProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            updateGrowthUI('wowProfit', wowProfit, ' Profit');
+        }
 
         function calculateMonthlyProjection(data) {
             const now = new Date();
@@ -433,11 +563,13 @@
                 return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             });
 
+            const uniqueDaysInMonth = new Set(currentMonthSales.map(s => s.date)).size;
+
             const currentMonthRevenue = currentMonthSales.reduce((sum, s) => sum + s.totalAmount, 0);
 
             let projected = 0;
-            if (currentDay > 0) {
-                projected = (currentMonthRevenue / currentDay) * daysInMonth;
+            if (uniqueDaysInMonth > 0) {
+                projected = (currentMonthRevenue / uniqueDaysInMonth) * daysInMonth;
             }
 
             document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
@@ -631,18 +763,43 @@
             updateGrowthUI('growthProfit', today.profit, yesterday.profit, '₹');
         }
 
-        function updateGrowthUI(elementId, current, previous, prefix) {
-            if(previous === 0) return;
-            const growth = ((current - previous) / previous) * 100;
+        function updateGrowthUI(elementId, current, previous, suffix) {
+            let growth = 0;
+            if (previous === 0 && current > 0) {
+                growth = Infinity; 
+            } else if (previous !== 0) {
+                growth = ((current - previous) / previous) * 100;
+            }
+
             const el = document.getElementById(elementId);
             
             let icon = '—';
             let colorClass = 'growth-neutral';
+            let text = 'N/A';
 
-            if(growth > 0) { icon = '▲'; colorClass = 'growth-positive'; }
-            if(growth < 0) { icon = '▼'; colorClass = 'growth-negative'; }
+            if (growth === Infinity) {
+                icon = '▲';
+                colorClass = 'growth-positive';
+                text = '∞%';
+            } else if (growth > 0) { 
+                icon = '▲'; 
+                colorClass = 'growth-positive'; 
+                text = `${growth.toFixed(1)}%`;
+            } else if (growth < 0) { 
+                icon = '▼'; 
+                colorClass = 'growth-negative'; 
+                text = `${Math.abs(growth).toFixed(1)}%`;
+            } else if (current === previous && current !== 0) {
+                icon = '—';
+                colorClass = 'growth-neutral';
+                text = '0.0%';
+            } else if (current === 0 && previous === 0) {
+                icon = '—';
+                colorClass = 'growth-neutral';
+                text = '—';
+            }
 
-            el.innerHTML = `<span class="${colorClass}">${icon} ${growth.toFixed(1)}%</span>`;
+            el.innerHTML = `<span class="${colorClass}">${icon} ${text} ${suffix ? suffix.trim() : ''}</span>`;
         }
 
         function clearFilters() {
@@ -667,6 +824,21 @@
             html += '</tbody></table>';
             document.getElementById('tableContainer').innerHTML = html;
         }
+        
+        // New utility function to format date for charts
+        function formatChartDate(dateString) {
+            const date = new Date(dateString);
+            // Ensure the date is treated as local/UTC to prevent timezone issues shifting the day
+            const parts = dateString.split('-');
+            // Create a Date object using UTC methods to prevent local timezone shift
+            const localDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
+            
+            // Format: DayName Month/Day
+            const dayName = localDate.toLocaleDateString('en-US', { weekday: 'short' });
+            const monthDay = localDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+            return `${dayName} ${monthDay}`;
+        }
+
 
         function renderCharts(data) {
             const ctxRestro = document.getElementById('restroChart').getContext('2d');
@@ -687,7 +859,6 @@
             const sortedDates = Object.keys(dateAgg).sort();
             const sortedDatesOrders = Object.keys(dailyOrderCount).sort(); 
 
-
             if(restroChartInstance) restroChartInstance.destroy();
             restroChartInstance = new Chart(ctxRestro, {
                 type: 'bar',
@@ -698,12 +869,12 @@
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, title: {display:true, text:'Top Restaurants by Profit'} } }
             });
 
-            // Daily Orders Chart (Full Width)
+            // Daily Orders Chart (Full Width) - Uses new date format
             if(ordersChartInstance) ordersChartInstance.destroy();
             ordersChartInstance = new Chart(ctxOrders, {
                 type: 'bar',
                 data: {
-                    labels: sortedDatesOrders,
+                    labels: sortedDatesOrders.map(formatChartDate),
                     datasets: [{ 
                         label: 'Daily Orders', 
                         data: sortedDatesOrders.map(d => dailyOrderCount[d]), 
