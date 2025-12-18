@@ -3,60 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Sales Tracker (Pro)</title>
+    <title>Khanago Sales Tracker (Pro)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- CSS STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); min-height: 10vh; padding: 20px; color: #333; }
-        
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-        
         header { background: linear-gradient(135deg, #ff5722 0%, #ff6f00 100%); color: white; padding: 25px; text-align: center; }
         header h1 { font-size: 2.2em; margin-bottom: 5px; }
         header p { opacity: 0.9; font-size: 0.9em; }
-
         .content { padding: 30px; }
-
-        /* Sections */
         .card { background: #fff5f2; border: 2px solid #ff8c42; border-radius: 15px; padding: 25px; margin-bottom: 30px; }
         h2 { color: #ff5722; margin-bottom: 20px; font-size: 1.6em; display: flex; align-items: center; gap: 10px; }
-
-        /* Inputs & Forms */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .form-group { display: flex; flex-direction: column; }
         label { color: #d84315; font-weight: 600; margin-bottom: 5px; font-size: 0.85em; text-transform: uppercase; }
         input, select { padding: 10px; border: 2px solid #ffccbc; border-radius: 8px; font-size: 0.95em; transition: 0.3s; background: white; }
         input:focus, select:focus { outline: none; border-color: #ff5722; box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.1); }
-        
         .readonly-field { background: #ffe0d6; font-weight: bold; color: #d84315; cursor: default; }
         .calc-hint { font-size: 0.8em; color: #666; margin-top: 4px; font-weight: bold; }
-
-        /* Buttons */
         .btn { background: linear-gradient(135deg, #ff5722 0%, #ff6f00 100%); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-size: 1em; font-weight: 600; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.2); }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(255, 87, 34, 0.3); }
         .btn-secondary { background: white; color: #ff5722; border: 2px solid #ff5722; }
-        .btn-clear { background: #9e9e9e; background: linear-gradient(135deg, #757575 0%, #616161 100%); }
+        .btn-clear { background: linear-gradient(135deg, #757575 0%, #616161 100%); }
         .btn-invoice { background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3); }
-
-        /* Stats Grid */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: white; border: 1px solid #ffccbc; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .stat-card h3 { font-size: 0.8em; color: #757575; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card p { color: #ff5722; font-size: 1.4em; font-weight: 800; margin: 0; }
-        
-        /* Growth Colors */
         .growth-positive { color: #2e7d32; font-size: 0.8em; font-weight: bold; }
         .growth-negative { color: #c62828; font-size: 0.8em; font-weight: bold; }
         .growth-neutral { color: #757575; font-size: 0.8em; font-weight: bold; }
-
-        /* Filter Section */
         .filter-section { background: white; padding: 20px; border-radius: 12px; border: 1px solid #ffccbc; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-
-        /* Table */
         .table-container { overflow-x: auto; border-radius: 10px; border: 1px solid #ffccbc; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 0.9em; }
         thead { background: #ff5722; color: white; }
@@ -64,78 +46,33 @@
         tbody tr:hover { background: #fff5f2; }
         .delete-btn { background: #ffebee; color: #c62828; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8em; }
         .delete-btn:hover { background: #ef5350; color: white; }
-
-        /* New CSS for Full-Width Top Chart */
-        .charts-grid-top {
-            display: grid;
-            grid-template-columns: 1fr; /* Single full-width column */
-            gap: 20px; 
-            margin-top: 30px; 
-            margin-bottom: 20px;
-        }
-
-        /* New CSS for Two Bottom Charts */
-        .charts-grid-bottom {
-            display: grid;
-            /* Two columns for bottom, adjusting min width for better flow */
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
-            gap: 20px; 
-        }
-        .chart-box { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            border: 1px solid #ffccbc; 
-            height: 320px; 
-        }
-        
-        /* Weekly Stats Table */
-        .weekly-comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 1em;
-            margin-top: 10px;
-        }
-        .weekly-comparison-table th, .weekly-comparison-table td {
-            padding: 10px;
-            text-align: center;
-            border: 1px solid #ffccbc;
-        }
-        .weekly-comparison-table thead th {
-            background-color: #ff5722;
-            color: white;
-        }
-        .weekly-comparison-table tbody th {
-            background-color: #ffccbc;
-            text-align: left;
-            font-weight: bold;
-            width: 30%;
-        }
+        .charts-grid-top { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 30px; margin-bottom: 20px; }
+        .charts-grid-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .chart-box { background: white; padding: 20px; border-radius: 12px; border: 1px solid #ffccbc; height: 320px; }
+        #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:9999; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #ff5722; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="loader" id="loader">
+    <div id="loader">
         <div class="spinner"></div>
-        <h3 style="color: #ff5722;">Syncing Data...</h3>
+        <h3 style="color: #ff5722;">Syncing Supabase...</h3>
     </div>
 
     <div class="container">
         <header>
-            <h1>🍽️ Restaurant Sales Tracker</h1>
-            <p>Live Dashboard • Connected to Google Sheets</p>
+            <h1>🍽️ Khanago Sales Tracker</h1>
+            <p>Live Dashboard • Connected to Supabase</p>
         </header>
 
         <div class="content">
-            
             <div class="card">
                 <h2>➕ New Entry</h2>
                 <form id="salesForm">
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" id="date" required>
-                        </div>
+                        <div class="form-group"><label>Date</label><input type="date" id="date" required></div>
                         <div class="form-group">
                             <label>Restaurant</label>
                             <select id="restro" required>
@@ -149,17 +86,12 @@
                                 <option value="Rajshahi">Rajshahi</option>
                                 <option value="Shiva Muradabadi Chicken Biryani">Shiva Muradabadi Chicken Biryani</option>
                                 <option value="Raju Handi Meat">Raju Handi Meat</option>
-                                <option value="Shifaji Biryani">Shifaji Biryani</option>
+                                <option value="Shifa Biryani">Shifa Biryani</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Total Amount (₹)</label>
-                            <input type="number" id="totalAmount" step="0.01" placeholder="0.00" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Item Price (₹)</label>
-                            <input type="number" id="itemPrice" step="0.01" placeholder="0.00" required>
-                        </div>
+                        <div class="form-group"><label>Total Amount (₹)</label><input type="number" id="totalAmount" step="0.01" placeholder="0.00" required></div>
+                        <div class="form-group"><label>Item Price (₹)</label><input type="number" id="itemPrice" step="0.01" placeholder="0.00" required></div>
                         <div class="form-group">
                             <label>Trans. Fees (%)</label>
                             <input type="number" id="transactionFees" step="0.01" value="1" required>
@@ -170,58 +102,13 @@
                             <input type="number" id="commission" step="0.01" value="0" required>
                             <span id="commissionCalc" class="calc-hint">0% = ₹0.00</span>
                         </div>
-                        <div class="form-group">
-                            <label>Cust. Platform Fees</label>
-                            <input type="number" id="customerPlatformFees" step="0.01" value="0" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Restro Platform Fees</label>
-                            <input type="number" id="restroPlatformFees" step="0.01" value="2" class="readonly-field" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Profit (Auto)</label>
-                            <input type="number" id="profit" step="0.01" class="readonly-field" readonly>
-                        </div>
+                        <div class="form-group"><label>Cust. Platform Fees</label><input type="number" id="customerPlatformFees" step="0.01" value="0" required></div>
+                        <div class="form-group"><label>Restro Platform Fees</label><input type="number" id="restroPlatformFees" step="0.01" value="2" class="readonly-field" readonly></div>
+                        <div class="form-group"><label>Profit (Auto)</label><input type="number" id="profit" step="0.01" class="readonly-field" readonly></div>
                     </div>
                     <button type="submit" class="btn">Add Sale</button>
                     <button type="button" class="btn btn-secondary" onclick="loadData()">🔄 Refresh</button>
                 </form>
-            </div>
-
-            <div class="card">
-                <h2>📈 Weekly Performance (Fri-Thu)</h2>
-                <div id="weeklyComparisonContainer">
-                    <table class="weekly-comparison-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th id="cwPeriod">Current Week</th>
-                                <th id="pwPeriod">Previous Week</th>
-                                <th>% Change</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <th>Total Orders</th>
-                                <td id="cwOrders">0</td>
-                                <td id="pwOrders">0</td>
-                                <td id="wowOrders" class="growth-neutral">—</td>
-                            </tr>
-                            <tr>
-                                <th>Total Revenue</th>
-                                <td id="cwRevenue">₹0</td>
-                                <td id="pwRevenue">₹0</td>
-                                <td id="wowRevenue" class="growth-neutral">—</td>
-                            </tr>
-                            <tr>
-                                <th>Gross Profit</th>
-                                <td id="cwProfit">₹0</td>
-                                <td id="pwProfit">₹0</td>
-                                <td id="wowProfit" class="growth-neutral">—</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
             <div class="card" style="border-color: #2c3e50; background-color: #f8f9fa;">
@@ -229,7 +116,7 @@
                 <div class="form-grid" style="margin-bottom: 0;">
                     <div class="form-group">
                         <label>Select Restaurant</label>
-                        <select id="invoiceRestro" required>
+                        <select id="invoiceRestro">
                             <option value="">Select Restaurant</option>
                             <option value="Deep Handi Mutton">Deep Handi Mutton</option>
                             <option value="7 Star">7 Star</option>
@@ -240,49 +127,48 @@
                             <option value="Rajshahi">Rajshahi</option>
                             <option value="Shiva Muradabadi Chicken Biryani">Shiva Muradabadi Chicken Biryani</option>
                             <option value="Raju Handi Meat">Raju Handi Meat</option>
-                            <option value="Shifaji Biryani">Shifaji Biryani</option>
+                            <option value="Shifa Biryani">Shifa Biryani</option>
+                            <option value="Other">Other</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Start Date</label>
-                        <input type="date" id="invoiceStart">
-                    </div>
-                    <div class="form-group">
-                        <label>End Date</label>
-                        <input type="date" id="invoiceEnd">
-                    </div>
-                    <div class="form-group" style="justify-content: flex-end;">
-                        <button class="btn btn-invoice" onclick="generateInvoice()">Download Receipt</button>
-                    </div>
+                    <div class="form-group"><label>Start Date</label><input type="date" id="invoiceStart"></div>
+                    <div class="form-group"><label>End Date</label><input type="date" id="invoiceEnd"></div>
+                    <div class="form-group" style="justify-content: flex-end;"><button class="btn btn-invoice" onclick="generateInvoice()">Download Receipt</button></div>
                 </div>
             </div>
 
             <div class="card">
                 <h2>🛵 Daily Riders</h2>
                 <form id="riderSetupForm" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px;">
-                    <div class="form-group">
-                        <label>Date</label>
-                        <input type="date" id="riderDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Count</label>
-                        <input type="number" id="numRiders" min="1" placeholder="0" style="width: 80px;" required>
-                    </div>
+                    <div class="form-group"><label>Date</label><input type="date" id="riderDate" required></div>
+                    <div class="form-group"><label>Count</label><input type="number" id="numRiders" min="1" placeholder="0" style="width: 80px;" required></div>
                     <button type="submit" class="btn">Set Riders</button>
                 </form>
                 <div id="riderInputsContainer"></div>
                 <div id="riderHistoryContainer" style="margin-top: 15px; font-size: 0.9em; color: #555;"></div>
             </div>
 
+            <div class="card" style="border-color: #4a6baf; background-color: #f8f9ff;">
+                <h2 style="color: #4a6baf;">📈 Weekly Growth</h2>
+                <div class="stats" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="stat-card">
+                        <h3>Revenue Growth</h3>
+                        <div id="weeklyRevenueGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
+                        <p class="text-muted" id="weeklyRevenuePeriod">This week vs last week</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Order Growth</h3>
+                        <div id="weeklyOrderGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
+                        <p class="text-muted" id="weeklyOrderPeriod">This week vs last week</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>📊 Analytics & Filters</h2>
-                
                 <div class="filter-section">
                     <div class="form-grid" style="margin-bottom: 0;">
-                        <div class="form-group">
-                            <label>Filter by Date</label>
-                            <input type="date" id="filterDate">
-                        </div>
+                        <div class="form-group"><label>Filter by Date</label><input type="date" id="filterDate"></div>
                         <div class="form-group">
                             <label>Filter by Restaurant</label>
                             <select id="filterRestro">
@@ -296,7 +182,8 @@
                                 <option value="Rajshahi">Rajshahi</option>
                                 <option value="Shiva Muradabadi Chicken Biryani">Shiva Muradabadi Chicken Biryani</option>
                                 <option value="Raju Handi Meat">Raju Handi Meat</option>
-                                <option value="Shifaji Biryani">Shifaji Biryani</option>
+                                <option value="Shifa Biryani">Shifa Biryani</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group" style="justify-content: flex-end; flex-direction: row; gap: 10px;">
@@ -309,32 +196,22 @@
                 <div class="stats">
                     <div class="stat-card"><h3>Total Orders</h3><p id="totalEntries">0</p></div>
                     <div class="stat-card"><h3>Total Revenue</h3><p id="totalSales">₹0</p></div>
-                    
-                    <div class="stat-card" style="border-color: #ff5722; background: #fffbf9;">
-                        <h3 style="color: #ff5722;">Proj. Month Revenue</h3>
-                        <p id="projRevenue">₹0</p>
-                    </div>
-
+                    <div class="stat-card" style="border-color: #ff5722; background: #fffbf9;"><h3 style="color: #ff5722;">Proj. Month Revenue</h3><p id="projRevenue">₹0</p></div>
                     <div class="stat-card"><h3>Gross Profit</h3><p id="totalGrossProfit">₹0</p></div>
                     <div class="stat-card"><h3>Rider Cost</h3><p id="totalRiderCost" style="color: #c62828;">₹0</p></div>
                     <div class="stat-card"><h3>Net Profit</h3><p id="netProfit" style="color: #2e7d32;">₹0</p></div>
                     <div class="stat-card"><h3>Net Margin</h3><p id="netMargin" style="color: #2e7d32;">0%</p></div>
-                    
                     <div class="stat-card"><h3>Avg Orders/Day</h3><p id="avgOrdersPerDay">0</p></div>
                     <div class="stat-card"><h3>Avg Revenue/Day</h3><p id="avgRevenuePerDay">₹0</p></div>
                     <div class="stat-card"><h3>Avg Profit/Order</h3><p id="avgProfitPerOrder">₹0</p></div>
                     <div class="stat-card"><h3>AOV (Order Val)</h3><p id="aov">₹0</p></div>
-                    
                     <div class="stat-card"><h3>Daily Order Growth</h3><div id="growthOrders" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Rev Growth</h3><div id="growthRevenue" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Profit Growth</h3><div id="growthProfit" class="growth-neutral">—</div></div>
                 </div>
 
-                <div id="charts-grid-top" class="charts-grid-top">
-                    <div class="chart-box" id="dailyOrdersChartBox"><canvas id="ordersChart"></canvas></div>
-                </div>
-                
-                <div id="charts-grid-bottom" class="charts-grid-bottom">
+                <div class="charts-grid-top"><div class="chart-box"><canvas id="ordersChart"></canvas></div></div>
+                <div class="charts-grid-bottom">
                     <div class="chart-box"><canvas id="restroChart"></canvas></div>
                     <div class="chart-box"><canvas id="trendChart"></canvas></div>
                 </div>
@@ -348,75 +225,105 @@
     </div>
 
     <script>
-        // ============================================================
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnAqVI0m_sZsczrN19KNvySdkho21NUdDM7ihTCeBx8_diGy7BW4bJWMVaDl5horQS/exec';
-        // ============================================================
+        const SUPABASE_URL = 'https://tyhrahuionsvzyuzdtkr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5aHJhaHVpb25zdnp5dXpkdGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNzA4MTcsImV4cCI6MjA4MTY0NjgxN30.ypEmevr3XTuyNtJxUSSqCplAdcru9fkE3q15HOQHrVY';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let allSalesData = [];
         let allRiderData = {};
-        let restroChartInstance = null;
-        let trendChartInstance = null;
-        let ordersChartInstance = null; 
+        let restroChartInstance = null, trendChartInstance = null, ordersChartInstance = null;
 
         const showLoader = () => document.getElementById('loader').style.display = 'flex';
         const hideLoader = () => document.getElementById('loader').style.display = 'none';
 
+        // --- DATA PERSISTENCE ---
         async function loadData() {
             showLoader();
             try {
-                const res = await fetch(SCRIPT_URL);
-                const data = await res.json();
+                const { data: sales, error: sErr } = await _supabase.from('sales').select('*');
+                if (sErr) throw sErr;
                 
-                allSalesData = data.sales.map(item => {
-                    item.date = normalizeDate(item.date);
-                    return item;
-                });
+                allSalesData = sales.map(s => ({
+                    id: s.id,
+                    date: s.Date,
+                    restro: s.Restaurant,
+                    totalAmount: s["Total Amount"],
+                    itemPrice: s["Item Price"],
+                    transactionFees: s["Transaction Fees %"],
+                    commission: s["Commission %"],
+                    customerPlatformFees: s["Customer Platform Fees"],
+                    restroPlatformFees: s["Restro Platform Fees"],
+                    profit: s.Profit
+                }));
 
-                allRiderData = {};
-                for (let dateKey in data.riders) {
-                    const cleanDate = normalizeDate(dateKey);
-                    allRiderData[cleanDate] = data.riders[dateKey];
-                }
-                
-                updateDashboard(); 
+                const { data: riders, error: rErr } = await _supabase.from('riders').select('*');
+                if (rErr) throw rErr;
+
+                allRiderData = riders.reduce((acc, r) => {
+                    if (!acc[r.Date]) acc[r.Date] = [];
+                    acc[r.Date].push({ name: r["Rider Name"], wage: r.WAGE, id: r.id });
+                    return acc;
+                }, {});
+
+                updateDashboard();
                 renderRiderHistoryUI();
             } catch (e) {
                 console.error(e);
-                alert("Connection Error. Check console.");
+                alert("Supabase Error: " + e.message);
             }
             hideLoader();
         }
 
-        function normalizeDate(rawDate) {
-            if (!rawDate) return "";
-            if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return rawDate;
-            }
-            try {
-                const d = new Date(rawDate);
-                const offset = d.getTimezoneOffset() * 60000;
-                const localDate = new Date(d.getTime() - offset);
-                return localDate.toISOString().split('T')[0];
-            } catch(e) {
-                return rawDate;
-            }
+        async function addSaleEntry(entry) {
+            showLoader();
+            const { error } = await _supabase.from('sales').insert([{
+                "Date": entry.date,
+                "Restaurant": entry.restro,
+                "Total Amount": entry.totalAmount,
+                "Item Price": entry.itemPrice,
+                "Transaction Fees %": entry.transactionFees,
+                "Transaction Fees Amount": (entry.itemPrice * entry.transactionFees) / 100,
+                "Customer Platform Fees": entry.customerPlatformFees,
+                "Restro Platform Fees": entry.restroPlatformFees,
+                "Profit": entry.profit,
+                "Commission %": entry.commission,
+                "Commission Amt": (entry.itemPrice * entry.commission) / 100
+            }]);
+            
+            if (error) alert(error.message);
+            else { alert("Sale Saved!"); loadData(); }
+            hideLoader();
         }
 
-        async function sendToSheet(payload) {
+        async function saveRiders(date, riders) {
             showLoader();
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                setTimeout(() => { alert("Saved!"); loadData(); }, 1500);
-            } catch (e) {
-                console.error(e);
-                alert("Save Failed.");
-                hideLoader();
-            }
+            const rows = riders.map(r => ({
+                "Date": date,
+                "Rider Name": r.name,
+                "WAGE": r.wage
+            }));
+            const { error } = await _supabase.from('riders').insert(rows);
+            if (error) alert(error.message);
+            else { alert("Riders Saved!"); loadData(); }
+            hideLoader();
+        }
+
+        async function deleteSale(id) {
+            if(!confirm("Delete this sale?")) return;
+            showLoader();
+            const { error } = await _supabase.from('sales').delete().eq('id', id);
+            if (error) alert(error.message);
+            else loadData();
+            hideLoader();
+        }
+
+        async function deleteRiders(date) {
+            if(!confirm("Delete all riders for " + date + "?")) return;
+            showLoader();
+            const { error } = await _supabase.from('riders').delete().eq('Date', date);
+            if (error) alert(error.message);
+            else loadData();
+            hideLoader();
         }
 
         // --- DASHBOARD LOGIC ---
@@ -424,14 +331,12 @@
             const filterDate = document.getElementById('filterDate').value;
             const filterRestro = document.getElementById('filterRestro').value;
 
-            // 1. Filter Sales
             let filteredSales = allSalesData.filter(item => {
                 const dateMatch = filterDate ? item.date === filterDate : true;
                 const restroMatch = filterRestro ? item.restro === filterRestro : true;
                 return dateMatch && restroMatch;
             });
 
-            // 2. Rider Costs
             let relevantRiderCost = 0;
             if (filterDate) {
                 if(allRiderData[filterDate]) relevantRiderCost = allRiderData[filterDate].reduce((sum, r) => sum + r.wage, 0);
@@ -439,415 +344,63 @@
                 Object.values(allRiderData).forEach(dayList => dayList.forEach(r => relevantRiderCost += r.wage));
             }
 
-            // 3. Basic Stats
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
             const netProfit = totalGross - relevantRiderCost;
             const entryCount = filteredSales.length;
-
-            // 4. NEW KPI CALCULATIONS
             const uniqueDates = new Set(filteredSales.map(s => s.date)).size || 1;
             
-            const avgOrdersPerDay = entryCount > 0 ? (entryCount / uniqueDates) : 0;
-            const avgRevenuePerDay = totalRevenue > 0 ? (totalRevenue / uniqueDates) : 0;
-            const netMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
-            const avgProfitPerOrder = entryCount > 0 ? (netProfit / entryCount) : 0;
-            const aov = entryCount > 0 ? (totalRevenue / entryCount) : 0;
-
-            calculateGrowthMetrics(filteredSales);
-            calculateMonthlyProjection(allSalesData);
-            calculateWeeklyComparison(); // <--- NEW CALL
-
-            // 5. UPDATE UI
             document.getElementById('totalEntries').textContent = entryCount;
             document.getElementById('totalSales').textContent = `₹${totalRevenue.toLocaleString()}`;
             document.getElementById('totalGrossProfit').textContent = `₹${totalGross.toLocaleString()}`;
             document.getElementById('totalRiderCost').textContent = `₹${relevantRiderCost.toLocaleString()}`;
             document.getElementById('netProfit').textContent = `₹${netProfit.toLocaleString()}`;
-            
-            // New UI Updates
-            document.getElementById('avgOrdersPerDay').textContent = avgOrdersPerDay.toFixed(1);
-            document.getElementById('avgRevenuePerDay').textContent = `₹${avgRevenuePerDay.toFixed(0)}`;
-            document.getElementById('netMargin').textContent = `${netMargin.toFixed(1)}%`;
-            document.getElementById('avgProfitPerOrder').textContent = `₹${avgProfitPerOrder.toFixed(1)}`;
-            document.getElementById('aov').textContent = `₹${aov.toFixed(0)}`;
+            document.getElementById('avgOrdersPerDay').textContent = (entryCount / uniqueDates).toFixed(1);
+            document.getElementById('avgRevenuePerDay').textContent = `₹${(totalRevenue / uniqueDates).toFixed(0)}`;
+            document.getElementById('netMargin').textContent = `${(totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(1)}%`;
+            document.getElementById('avgProfitPerOrder').textContent = `₹${(entryCount > 0 ? netProfit / entryCount : 0).toFixed(1)}`;
+            document.getElementById('aov').textContent = `₹${(entryCount > 0 ? totalRevenue / entryCount : 0).toFixed(0)}`;
 
+            calculateGrowthMetrics(filteredSales);
+            calculateMonthlyProjection(allSalesData);
             renderTable(filteredSales);
             renderCharts(filteredSales);
         }
-        
-        // --- NEW WEEKLY COMPARISON LOGIC ---
-        function calculateWeeklyComparison() {
-            // Helper to get date string in YYYY-MM-DD format
-            const dateToISO = (date) => date.toISOString().split('T')[0];
-            
-            // 1. Determine Current Week (CW) and Previous Week (PW)
-            const today = new Date();
-            // Start of the week is Friday (5). The day of the week (0=Sun, 1=Mon... 6=Sat)
-            // Adjust to find the most recent Friday or earlier.
-            const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
-            const dayOffset = (dayOfWeek < 5) ? dayOfWeek + 2 : dayOfWeek - 5; // Days back to last Friday
-            
-            const cwStart = new Date(today);
-            cwStart.setDate(today.getDate() - dayOffset); // Last Friday
-            
-            const cwEnd = new Date(cwStart);
-            cwEnd.setDate(cwStart.getDate() + 6); // Next Thursday (the end of the CW cycle)
-            
-            const pwStart = new Date(cwStart);
-            pwStart.setDate(cwStart.getDate() - 7); // Friday before last
-            
-            const pwEnd = new Date(cwEnd);
-            pwEnd.setDate(cwEnd.getDate() - 7); // Thursday before last
-
-            // Formatting for UI
-            const cwPeriodStr = `${dateToISO(cwStart)} to ${dateToISO(cwEnd)}`;
-            const pwPeriodStr = `${dateToISO(pwStart)} to ${dateToISO(pwEnd)}`;
-
-            // 2. Filter data for CW and PW
-            const cwData = allSalesData.filter(item => {
-                const itemDate = new Date(item.date);
-                return itemDate >= cwStart && itemDate <= cwEnd;
-            });
-
-            const pwData = allSalesData.filter(item => {
-                const itemDate = new Date(item.date);
-                return itemDate >= pwStart && itemDate <= pwEnd;
-            });
-
-            // 3. Aggregate Metrics
-            const cwOrders = cwData.length;
-            const cwRevenue = cwData.reduce((sum, s) => sum + s.totalAmount, 0);
-            const cwProfit = cwData.reduce((sum, s) => sum + s.profit, 0);
-
-            const pwOrders = pwData.length;
-            const pwRevenue = pwData.reduce((sum, s) => sum + s.totalAmount, 0);
-            const pwProfit = pwData.reduce((sum, s) => sum + s.profit, 0);
-
-            // 4. Calculate WoW Change
-            const calculateChange = (current, previous) => {
-                if (previous === 0) return current > 0 ? Infinity : 0;
-                return ((current - previous) / previous) * 100;
-            };
-
-            const wowOrders = calculateChange(cwOrders, pwOrders);
-            const wowRevenue = calculateChange(cwRevenue, pwRevenue);
-            const wowProfit = calculateChange(cwProfit, pwProfit);
-
-            // 5. Update UI
-            document.getElementById('cwPeriod').textContent = cwPeriodStr;
-            document.getElementById('pwPeriod').textContent = pwPeriodStr;
-
-            document.getElementById('cwOrders').textContent = cwOrders;
-            document.getElementById('pwOrders').textContent = pwOrders;
-            updateGrowthUI('wowOrders', wowOrders, ' Orders');
-
-            document.getElementById('cwRevenue').textContent = `₹${cwRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            document.getElementById('pwRevenue').textContent = `₹${pwRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            updateGrowthUI('wowRevenue', wowRevenue, ' Rev');
-
-            document.getElementById('cwProfit').textContent = `₹${cwProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            document.getElementById('pwProfit').textContent = `₹${pwProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            updateGrowthUI('wowProfit', wowProfit, ' Profit');
-        }
 
         function calculateMonthlyProjection(data) {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth(); 
-            const currentDay = now.getDate();
+            const now = new Date(), currentYear = now.getFullYear(), currentMonth = now.getMonth();
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-            const currentMonthSales = data.filter(s => {
-                const d = new Date(s.date);
-                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            const currSales = data.filter(s => {
+                const d = new Date(s.date); return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             });
-
-            const uniqueDaysInMonth = new Set(currentMonthSales.map(s => s.date)).size;
-
-            const currentMonthRevenue = currentMonthSales.reduce((sum, s) => sum + s.totalAmount, 0);
-
-            let projected = 0;
-            if (uniqueDaysInMonth > 0) {
-                projected = (currentMonthRevenue / uniqueDaysInMonth) * daysInMonth;
-            }
-
+            const uniqueDays = new Set(currSales.map(s => s.date)).size;
+            const rev = currSales.reduce((s, x) => s + x.totalAmount, 0);
+            const projected = uniqueDays > 0 ? (rev / uniqueDays) * daysInMonth : 0;
             document.getElementById('projRevenue').textContent = `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
         }
 
-        // --- PDF GENERATOR (Appealing Version) ---
-        function generateInvoice() {
-            const restroName = document.getElementById('invoiceRestro').value;
-            const startDate = document.getElementById('invoiceStart').value;
-            const endDate = document.getElementById('invoiceEnd').value;
-
-            if (!restroName || !startDate || !endDate) {
-                alert("Please select Restaurant, Start Date, and End Date.");
-                return;
-            }
-
-            const invoiceData = allSalesData.filter(item => {
-                return item.restro === restroName && item.date >= startDate && item.date <= endDate;
-            });
-
-            if (invoiceData.length === 0) {
-                alert("No sales found for this criteria.");
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            const primaryColor = [255, 87, 34];
-            const darkColor = [44, 62, 80];
-
-            doc.setFillColor(...darkColor);
-            doc.rect(0, 0, 210, 8, 'F');
-
-            doc.setFillColor(255, 255, 255);
-            doc.setFillColor(...primaryColor);
-            doc.roundedRect(14, 20, 20, 20, 3, 3, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("KR", 18, 33);
-
-            doc.setTextColor(...darkColor);
-            doc.setFontSize(22);
-            doc.text("Khanago", 40, 28);
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.setFont("helvetica", "normal");
-            doc.text("RAAOSKG Techspark LLP", 40, 34);
-
-            doc.setFontSize(28);
-            doc.setTextColor(...primaryColor);
-            doc.text("PAYOUT", 195, 30, { align: "right" });
-            doc.setFontSize(10);
-            doc.setTextColor(150);
-            doc.text("STATEMENT / INVOICE", 195, 36, { align: "right" });
-
-            doc.setFillColor(250, 250, 250);
-            doc.roundedRect(14, 50, 182, 35, 2, 2, 'F');
-            doc.setDrawColor(220);
-            doc.roundedRect(14, 50, 182, 35, 2, 2, 'S');
-
-            doc.setTextColor(...darkColor);
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.text("RESTAURANT DETAILS:", 20, 60);
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(12);
-            doc.text(restroName, 20, 70);
-            
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.text("Statement Date:", 120, 60);
-            doc.text("Period:", 120, 70);
-            doc.setFont("helvetica", "normal");
-            doc.text(new Date().toLocaleDateString(), 160, 60);
-            doc.text(`${startDate} to ${endDate}`, 160, 70);
-
-            let totalItemAmt = 0;
-            let totalRestroFee = 0;
-            let totalTransFee = 0;
-            let totalCommission = 0;
-            let totalPayout = 0;
-
-            const tableRows = invoiceData.map(row => {
-                const transFeeAmt = (row.itemPrice * row.transactionFees) / 100;
-                const commissionAmt = (row.itemPrice * (row.commission || 0)) / 100;
-                const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt - commissionAmt;
-
-                totalItemAmt += row.itemPrice;
-                totalRestroFee += row.restroPlatformFees;
-                totalTransFee += transFeeAmt;
-                totalCommission += commissionAmt;
-                totalPayout += payout;
-
-                return [
-                    row.date,
-                    `${row.itemPrice.toFixed(2)}`,
-                    `${row.restroPlatformFees.toFixed(2)}`,
-                    `${transFeeAmt.toFixed(2)}  (${row.transactionFees}%)`,
-                    `${commissionAmt.toFixed(2)}  (${row.commission || 0}%)`,
-                    `${payout.toFixed(2)}`
-                ];
-            });
-
-            doc.autoTable({
-                startY: 95,
-                head: [['Date', 'Item Amount (Rs)', 'Platform Fee', 'Trans. Fee', 'Commission', 'Net Payable']],
-                body: tableRows,
-                theme: 'grid',
-                headStyles: { 
-                    fillColor: primaryColor, 
-                    textColor: [255, 255, 255], 
-                    fontStyle: 'bold',
-                    halign: 'left'
-                },
-                bodyStyles: { textColor: [50, 50, 50], fontSize: 9 },
-                columnStyles: {
-                    0: { cellWidth: 30 },
-                    5: { fontStyle: 'bold', textColor: [30, 30, 30], halign: 'right' },
-                    1: { halign: 'right' },
-                    2: { halign: 'right' },
-                    3: { halign: 'right' },
-                    4: { halign: 'right' }
-                },
-                styles: { cellPadding: 5 },
-                alternateRowStyles: { fillColor: [255, 250, 248] }
-            });
-
-            const finalY = doc.lastAutoTable.finalY + 10;
-            const summaryX = 110; 
-
-            doc.setDrawColor(...primaryColor);
-            doc.setLineWidth(0.5);
-            doc.line(14, finalY, 196, finalY);
-
-            doc.setFontSize(10);
-            doc.setTextColor(80, 80, 80);
-            doc.text(`Total Sales Amount:`, summaryX, finalY + 10);
-            doc.text(`${totalItemAmt.toFixed(2)}`, 195, finalY + 10, { align: "right" });
-            doc.text(`Platform Fees Deducted:`, summaryX, finalY + 16);
-            doc.text(`- ${totalRestroFee.toFixed(2)}`, 195, finalY + 16, { align: "right" });
-            doc.text(`Transaction Fees Deducted:`, summaryX, finalY + 22);
-            doc.text(`- ${totalTransFee.toFixed(2)}`, 195, finalY + 22, { align: "right" });
-            doc.text(`Commission Deducted:`, summaryX, finalY + 28);
-            doc.text(`- ${totalCommission.toFixed(2)}`, 195, finalY + 28, { align: "right" });
-
-            doc.setFillColor(...primaryColor);
-            doc.roundedRect(summaryX - 5, finalY + 36, 96, 14, 2, 2, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("NET PAYABLE AMOUNT:", summaryX, finalY + 45);
-            doc.setFontSize(14);
-            doc.text(`Rs ${totalPayout.toFixed(2)}`, 195, finalY + 45, { align: "right" });
-
-            doc.setFontSize(10);
-            doc.setTextColor(150);
-            doc.setFont("helvetica", "italic");
-            doc.text("Authorized by Khanago Finance Dept.", 14, finalY + 66);
-            doc.setFontSize(8);
-            doc.text("Generated by Khanago System • This is a computer-generated invoice.", 105, 285, { align: "center" });
-
-            doc.save(`Payout_${restroName.replace(/\s+/g, '_')}_${startDate}.pdf`);
-        }
-
-        // --- Growth Metrics ---
-        function calculateGrowthMetrics(data) {
-            const dailyAgg = {};
-            data.forEach(s => {
-                if(!dailyAgg[s.date]) dailyAgg[s.date] = { orders: 0, revenue: 0, profit: 0 };
-                dailyAgg[s.date].orders++;
-                dailyAgg[s.date].revenue += s.totalAmount;
-                dailyAgg[s.date].profit += s.profit;
-            });
-
-            const sortedDates = Object.keys(dailyAgg).sort();
-            
-            if(sortedDates.length < 2) {
-                document.getElementById('growthOrders').innerHTML = '—';
-                document.getElementById('growthRevenue').innerHTML = '—';
-                document.getElementById('growthProfit').innerHTML = '—';
-                return;
-            }
-
-            const today = dailyAgg[sortedDates[sortedDates.length - 1]];
-            const yesterday = dailyAgg[sortedDates[sortedDates.length - 2]];
-
-            updateGrowthUI('growthOrders', today.orders, yesterday.orders, '');
-            updateGrowthUI('growthRevenue', today.revenue, yesterday.revenue, '₹');
-            updateGrowthUI('growthProfit', today.profit, yesterday.profit, '₹');
-        }
-
-        function updateGrowthUI(elementId, current, previous, suffix) {
-            let growth = 0;
-            if (previous === 0 && current > 0) {
-                growth = Infinity; 
-            } else if (previous !== 0) {
-                growth = ((current - previous) / previous) * 100;
-            }
-
-            const el = document.getElementById(elementId);
-            
-            let icon = '—';
-            let colorClass = 'growth-neutral';
-            let text = 'N/A';
-
-            if (growth === Infinity) {
-                icon = '▲';
-                colorClass = 'growth-positive';
-                text = '∞%';
-            } else if (growth > 0) { 
-                icon = '▲'; 
-                colorClass = 'growth-positive'; 
-                text = `${growth.toFixed(1)}%`;
-            } else if (growth < 0) { 
-                icon = '▼'; 
-                colorClass = 'growth-negative'; 
-                text = `${Math.abs(growth).toFixed(1)}%`;
-            } else if (current === previous && current !== 0) {
-                icon = '—';
-                colorClass = 'growth-neutral';
-                text = '0.0%';
-            } else if (current === 0 && previous === 0) {
-                icon = '—';
-                colorClass = 'growth-neutral';
-                text = '—';
-            }
-
-            el.innerHTML = `<span class="${colorClass}">${icon} ${text} ${suffix ? suffix.trim() : ''}</span>`;
-        }
-
-        function clearFilters() {
-            document.getElementById('filterDate').value = '';
-            document.getElementById('filterRestro').value = '';
-            updateDashboard();
-        }
-
+        // --- UI RENDERERS ---
         function renderTable(data) {
             const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
             let html = `<table><thead><tr><th>Date</th><th>Restaurant</th><th>Total</th><th>Profit</th><th>Action</th></tr></thead><tbody>`;
             if(sorted.length === 0) html += '<tr><td colspan="5" style="text-align:center; padding:20px;">No records found</td></tr>';
             sorted.slice(0, 100).forEach(row => {
-                html += `<tr>
-                    <td>${row.date}</td>
-                    <td>${row.restro}</td>
-                    <td>₹${row.totalAmount}</td>
-                    <td style="color:#ff5722; font-weight:bold;">₹${row.profit.toFixed(2)}</td>
-                    <td><button class="delete-btn" onclick="deleteSale('${row.id}')">Del</button></td>
-                </tr>`;
+                html += `<tr><td>${row.date}</td><td>${row.restro}</td><td>₹${row.totalAmount}</td><td style="color:#ff5722; font-weight:bold;">₹${row.profit.toFixed(2)}</td><td><button class="delete-btn" onclick="deleteSale('${row.id}')">Del</button></td></tr>`;
             });
-            html += '</tbody></table>';
-            document.getElementById('tableContainer').innerHTML = html;
-        }
-        
-        // New utility function to format date for charts
-        function formatChartDate(dateString) {
-            const date = new Date(dateString);
-            // Ensure the date is treated as local/UTC to prevent timezone issues shifting the day
-            const parts = dateString.split('-');
-            // Create a Date object using UTC methods to prevent local timezone shift
-            const localDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
-            
-            // Format: DayName Month/Day
-            const dayName = localDate.toLocaleDateString('en-US', { weekday: 'short' });
-            const monthDay = localDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-            return `${dayName} ${monthDay}`;
+            document.getElementById('tableContainer').innerHTML = html + '</tbody></table>';
         }
 
+        function formatChartDate(dateString) {
+            const parts = dateString.split('-');
+            const localDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
+            return `${localDate.toLocaleDateString('en-US', { weekday: 'short' })} ${localDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`;
+        }
 
         function renderCharts(data) {
             const ctxRestro = document.getElementById('restroChart').getContext('2d');
             const ctxTrend = document.getElementById('trendChart').getContext('2d');
             const ctxOrders = document.getElementById('ordersChart').getContext('2d');
-            
-            const restroAgg = {};
-            const dateAgg = {};
-            const dailyOrderCount = {}; 
+            const restroAgg = {}, dateAgg = {}, dailyOrderCount = {}; 
 
             data.forEach(item => {
                 restroAgg[item.restro] = (restroAgg[item.restro] || 0) + item.profit;
@@ -857,85 +410,47 @@
 
             const sortedRestros = Object.entries(restroAgg).sort((a,b) => b[1] - a[1]).slice(0, 8);
             const sortedDates = Object.keys(dateAgg).sort();
-            const sortedDatesOrders = Object.keys(dailyOrderCount).sort(); 
 
             if(restroChartInstance) restroChartInstance.destroy();
             restroChartInstance = new Chart(ctxRestro, {
                 type: 'bar',
-                data: {
-                    labels: sortedRestros.map(x => x[0]),
-                    datasets: [{ label: 'Profit (₹)', data: sortedRestros.map(x => x[1]), backgroundColor: '#ff8c42', borderRadius: 4 }]
-                },
+                data: { labels: sortedRestros.map(x => x[0]), datasets: [{ label: 'Profit (₹)', data: sortedRestros.map(x => x[1]), backgroundColor: '#ff8c42', borderRadius: 4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, title: {display:true, text:'Top Restaurants by Profit'} } }
             });
 
-            // Daily Orders Chart (Full Width) - Uses new date format
             if(ordersChartInstance) ordersChartInstance.destroy();
             ordersChartInstance = new Chart(ctxOrders, {
                 type: 'bar',
-                data: {
-                    labels: sortedDatesOrders.map(formatChartDate),
-                    datasets: [{ 
-                        label: 'Daily Orders', 
-                        data: sortedDatesOrders.map(d => dailyOrderCount[d]), 
-                        backgroundColor: '#ff5722', 
-                        borderRadius: 4 
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: {display:false}, 
-                        title: {display:true, text:'Daily Orders by Date'} 
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) { if (value % 1 === 0) return value; } 
-                            }
-                        }
-                    }
-                }
+                data: { labels: sortedDates.map(formatChartDate), datasets: [{ label: 'Daily Orders', data: sortedDates.map(d => dailyOrderCount[d]), backgroundColor: '#ff5722', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, title: {display:true, text:'Daily Orders by Date'} } }
             });
 
             if(trendChartInstance) trendChartInstance.destroy();
             trendChartInstance = new Chart(ctxTrend, {
                 type: 'line',
-                data: {
-                    labels: sortedDates,
-                    datasets: [{ label: 'Daily Profit (₹)', data: sortedDates.map(d => dateAgg[d]), borderColor: '#ff5722', backgroundColor: 'rgba(255,87,34,0.1)', fill: true, tension: 0.3 }]
-                },
+                data: { labels: sortedDates, datasets: [{ label: 'Daily Profit (₹)', data: sortedDates.map(d => dateAgg[d]), borderColor: '#ff5722', backgroundColor: 'rgba(255,87,34,0.1)', fill: true, tension: 0.3 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, title: {display:true, text:'Profit Trend'} } }
             });
         }
 
-        // --- FORM & HELPERS ---
+        // --- FORM HELPERS ---
         function calcProfit() {
             const total = parseFloat(document.getElementById('totalAmount').value) || 0;
             const price = parseFloat(document.getElementById('itemPrice').value) || 0;
             const rate = parseFloat(document.getElementById('transactionFees').value) || 0;
             const commission = parseFloat(document.getElementById('commission').value) || 0;
             const restroFee = parseFloat(document.getElementById('restroPlatformFees').value) || 0;
-            
-            // Calculate Amounts for Display
-            const transFeeAmt = (price * rate) / 100;
-            const commissionAmt = (price * commission) / 100;
-            
+            const transFeeAmt = (price * rate) / 100, commissionAmt = (price * commission) / 100;
             document.getElementById('transFeeCalc').innerText = `${rate}% = ₹${transFeeAmt.toFixed(2)}`;
             document.getElementById('commissionCalc').innerText = `${commission}% = ₹${commissionAmt.toFixed(2)}`;
-
-            const profit = (total - price) + restroFee + transFeeAmt + commissionAmt;
-            
-            document.getElementById('profit').value = profit.toFixed(2);
+            document.getElementById('profit').value = ((total - price) + restroFee + transFeeAmt + commissionAmt).toFixed(2);
         }
         ['totalAmount','itemPrice','transactionFees','commission'].forEach(id => document.getElementById(id).addEventListener('input', calcProfit));
 
         document.getElementById('salesForm').addEventListener('submit', e => {
             e.preventDefault();
             const entry = {
-                id: Date.now(), date: document.getElementById('date').value,
+                date: document.getElementById('date').value,
                 restro: document.getElementById('restro').value,
                 totalAmount: parseFloat(document.getElementById('totalAmount').value),
                 itemPrice: parseFloat(document.getElementById('itemPrice').value),
@@ -945,57 +460,122 @@
                 restroPlatformFees: parseFloat(document.getElementById('restroPlatformFees').value),
                 profit: parseFloat(document.getElementById('profit').value)
             };
-            sendToSheet({ action: 'addSale', entry: entry });
-            const d = document.getElementById('date').value;
+            addSaleEntry(entry);
             e.target.reset();
-            document.getElementById('date').value = d;
-            document.getElementById('transactionFees').value = 1; 
-            document.getElementById('commission').value = 0;
-            document.getElementById('restroPlatformFees').value = 2;
+            document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('transactionFees').value = 1; document.getElementById('commission').value = 0; document.getElementById('restroPlatformFees').value = 2;
         });
 
+        // --- RIDER LOGIC ---
         document.getElementById('riderSetupForm').addEventListener('submit', e => {
             e.preventDefault();
-            const date = document.getElementById('riderDate').value;
-            const count = document.getElementById('numRiders').value;
+            const date = document.getElementById('riderDate').value, count = document.getElementById('numRiders').value;
             let html = `<div style="margin:15px 0; background:white; padding:10px; border:1px solid #ddd;"><h4>Enter ${count} Riders for ${date}</h4>`;
             for(let i=0; i<count; i++) {
-                html += `<div style="display:flex; gap:10px; margin-bottom:5px;">
-                    <input type="text" placeholder="Name" class="r-name" style="flex:2">
-                    <input type="number" placeholder="Wage" class="r-wage" style="flex:1">
-                </div>`;
+                html += `<div style="display:flex; gap:10px; margin-bottom:5px;"><input type="text" placeholder="Name" class="r-name" style="flex:2"><input type="number" placeholder="Wage" class="r-wage" style="flex:1"></div>`;
             }
-            html += `<button class="btn" onclick="saveRiders('${date}')">Save</button> <button class="btn btn-clear" onclick="this.parentNode.remove()">Cancel</button></div>`;
+            html += `<button class="btn" onclick="handleSaveRiders('${date}')">Save</button> <button class="btn btn-clear" onclick="this.parentNode.remove()">Cancel</button></div>`;
             document.getElementById('riderInputsContainer').innerHTML = html;
         });
 
-        function saveRiders(date) {
-            const names = document.querySelectorAll('.r-name');
-            const wages = document.querySelectorAll('.r-wage');
+        function handleSaveRiders(date) {
+            const names = document.querySelectorAll('.r-name'), wages = document.querySelectorAll('.r-wage');
             let riders = [];
             names.forEach((n,i) => { if(n.value && wages[i].value) riders.push({name:n.value, wage:parseFloat(wages[i].value)}) });
-            if(riders.length) {
-                sendToSheet({ action:'saveRiders', date:date, riders:riders });
-                document.getElementById('riderInputsContainer').innerHTML = '';
-            }
+            if(riders.length) { saveRiders(date, riders); document.getElementById('riderInputsContainer').innerHTML = ''; }
         }
 
         function renderRiderHistoryUI() {
             const container = document.getElementById('riderHistoryContainer');
             if(Object.keys(allRiderData).length === 0) { container.innerHTML = ''; return; }
             let html = '<strong>History:</strong> ';
-            const dates = Object.keys(allRiderData).sort().reverse().slice(0, 5);
-            dates.forEach(d => {
+            Object.keys(allRiderData).sort().reverse().slice(0, 5).forEach(d => {
                 const total = allRiderData[d].reduce((s,r) => s+r.wage, 0);
                 html += `<span style="background:white; border:1px solid #ccc; padding:2px 8px; margin-right:5px; border-radius:4px;">${d}: ₹${total} <span style="cursor:pointer; color:red;" onclick="deleteRiders('${d}')">x</span></span>`;
             });
             container.innerHTML = html;
         }
 
-        function deleteSale(id) { if(confirm("Delete?")) sendToSheet({action:'deleteSale', id:id}); }
-        function deleteRiders(date) { if(confirm("Delete riders for "+date+"?")) sendToSheet({action:'deleteRiders', date:date}); }
+        // --- GROWTH METRICS ---
+        function updateGrowthUI(elementId, current, previous, suffix) {
+            let growth = previous === 0 ? (current > 0 ? Infinity : 0) : ((current - previous) / previous) * 100;
+            const el = document.getElementById(elementId);
+            let icon = '—', colorClass = 'growth-neutral', text = '0.0%';
+            if (growth === Infinity) { icon = '▲'; colorClass = 'growth-positive'; text = '∞%'; }
+            else if (growth > 0) { icon = '▲'; colorClass = 'growth-positive'; text = `${growth.toFixed(1)}%`; }
+            else if (growth < 0) { icon = '▼'; colorClass = 'growth-negative'; text = `${Math.abs(growth).toFixed(1)}%`; }
+            el.innerHTML = `<span class="${colorClass}">${icon} ${text} ${suffix}</span>`;
+        }
 
-        // Init
+        function calculateGrowthMetrics(data) {
+            const daily = {};
+            data.forEach(s => {
+                if(!daily[s.date]) daily[s.date] = { orders: 0, revenue: 0, profit: 0 };
+                daily[s.date].orders++; daily[s.date].revenue += s.totalAmount; daily[s.date].profit += s.profit;
+            });
+            const sorted = Object.keys(daily).sort();
+            if(sorted.length < 2) { 
+                ['growthOrders','growthRevenue','growthProfit'].forEach(id => document.getElementById(id).innerHTML = '—'); 
+                return; 
+            }
+            const today = daily[sorted[sorted.length-1]], yesterday = daily[sorted[sorted.length-2]];
+            updateGrowthUI('growthOrders', today.orders, yesterday.orders, '');
+            updateGrowthUI('growthRevenue', today.revenue, yesterday.revenue, '₹');
+            updateGrowthUI('growthProfit', today.profit, yesterday.profit, '₹');
+            calculateWeeklyGrowth(daily);
+        }
+        
+        function calculateWeeklyGrowth(dailyData) {
+            const dates = Object.keys(dailyData).sort();
+            if (dates.length < 7) return; 
+            const lastTwoWeeks = dates.slice(-14);
+            const thisWeek = lastTwoWeeks.slice(-7);
+            const lastWeek = lastTwoWeeks.slice(0, 7);
+            const sumMetrics = (days) => days.reduce((acc, date) => {
+                const day = dailyData[date] || { orders: 0, revenue: 0, profit: 0 };
+                acc.orders += day.orders; acc.revenue += day.revenue; acc.profit += day.profit;
+                return acc;
+            }, { orders: 0, revenue: 0, profit: 0 });
+            
+            const thisWeekMetrics = sumMetrics(thisWeek);
+            const lastWeekMetrics = sumMetrics(lastWeek);
+            updateGrowthUI('weeklyRevenueGrowth', thisWeekMetrics.revenue, lastWeekMetrics.revenue, '₹');
+            updateGrowthUI('weeklyOrderGrowth', thisWeekMetrics.orders, lastWeekMetrics.orders, '');
+            const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            document.getElementById('weeklyRevenuePeriod').textContent = `${formatDate(thisWeek[0])} - ${formatDate(thisWeek[thisWeek.length-1])} vs ${formatDate(lastWeek[0])}...`;
+        }
+
+        function clearFilters() { document.getElementById('filterDate').value = ''; document.getElementById('filterRestro').value = ''; updateDashboard(); }
+
+        // --- PDF GENERATOR ---
+        function generateInvoice() {
+            const restroName = document.getElementById('invoiceRestro').value, startDate = document.getElementById('invoiceStart').value, endDate = document.getElementById('invoiceEnd').value;
+            if (!restroName || !startDate || !endDate) { alert("Select filters first."); return; }
+            const invoiceData = allSalesData.filter(item => item.restro === restroName && item.date >= startDate && item.date <= endDate);
+            if (invoiceData.length === 0) { alert("No records."); return; }
+            
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            const primaryColor = [255, 87, 34], darkColor = [44, 62, 80];
+            doc.setFillColor(...darkColor); doc.rect(0, 0, 210, 8, 'F');
+            doc.setFillColor(...primaryColor); doc.roundedRect(14, 20, 20, 20, 3, 3, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("KN", 18, 33);
+            doc.setTextColor(...darkColor); doc.setFontSize(22); doc.text("Khanago", 40, 28);
+            doc.setFontSize(28); doc.setTextColor(...primaryColor); doc.text("PAYOUT", 195, 30, { align: "right" });
+            
+            let totalPayout = 0;
+            const tableRows = invoiceData.map(row => {
+                const transFeeAmt = (row.itemPrice * row.transactionFees) / 100, commissionAmt = (row.itemPrice * (row.commission || 0)) / 100;
+                const payout = row.itemPrice - row.restroPlatformFees - transFeeAmt - commissionAmt;
+                totalPayout += payout;
+                return [row.date, row.itemPrice.toFixed(2), row.restroPlatformFees.toFixed(2), `${transFeeAmt.toFixed(2)} (${row.transactionFees}%)`, `${commissionAmt.toFixed(2)} (${row.commission || 0}%)`, payout.toFixed(2)];
+            });
+            
+            doc.autoTable({ startY: 95, head: [['Date', 'Item Amt', 'Plat Fee', 'Trans Fee', 'Comm', 'Net Payable']], body: tableRows, theme: 'grid', headStyles: { fillColor: primaryColor } });
+            doc.setTextColor(...primaryColor); doc.setFontSize(14); doc.text(`TOTAL NET PAYABLE: Rs ${totalPayout.toFixed(2)}`, 195, doc.lastAutoTable.finalY + 20, { align: "right" });
+            doc.save(`Payout_${restroName}.pdf`);
+        }
+
+        // Initialize
         document.getElementById('date').valueAsDate = new Date();
         document.getElementById('riderDate').valueAsDate = new Date();
         loadData();
