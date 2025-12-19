@@ -168,7 +168,8 @@
                 <h2>📊 Analytics & Filters</h2>
                 <div class="filter-section">
                     <div class="form-grid" style="margin-bottom: 0;">
-                        <div class="form-group"><label>Filter by Date</label><input type="date" id="filterDate"></div>
+                        <div class="form-group"><label>From Date</label><input type="date" id="filterStartDate"></div>
+                        <div class="form-group"><label>To Date</label><input type="date" id="filterEndDate"></div>
                         <div class="form-group">
                             <label>Filter by Restaurant</label>
                             <select id="filterRestro">
@@ -236,7 +237,6 @@
         const showLoader = () => document.getElementById('loader').style.display = 'flex';
         const hideLoader = () => document.getElementById('loader').style.display = 'none';
 
-        // Helper to safely set innerHTML only if element exists
         const safeSetHTML = (id, html) => {
             const el = document.getElementById(id);
             if(el) el.innerHTML = html;
@@ -337,23 +337,28 @@
             hideLoader();
         }
 
-        // --- DASHBOARD LOGIC ---
+        // --- DASHBOARD LOGIC (UPDATED FOR DATE RANGE) ---
         function updateDashboard() {
-            const filterDate = document.getElementById('filterDate').value;
+            const filterStart = document.getElementById('filterStartDate').value;
+            const filterEnd = document.getElementById('filterEndDate').value;
             const filterRestro = document.getElementById('filterRestro').value;
 
             let filteredSales = allSalesData.filter(item => {
-                const dateMatch = filterDate ? item.date === filterDate : true;
+                const startMatch = filterStart ? item.date >= filterStart : true;
+                const endMatch = filterEnd ? item.date <= filterEnd : true;
                 const restroMatch = filterRestro ? item.restro === filterRestro : true;
-                return dateMatch && restroMatch;
+                return startMatch && endMatch && restroMatch;
             });
 
+            // Calculate relevant rider costs over the range
             let relevantRiderCost = 0;
-            if (filterDate) {
-                if(allRiderData[filterDate]) relevantRiderCost = allRiderData[filterDate].reduce((sum, r) => sum + r.wage, 0);
-            } else {
-                Object.values(allRiderData).forEach(dayList => dayList.forEach(r => relevantRiderCost += r.wage));
-            }
+            Object.keys(allRiderData).forEach(date => {
+                const startMatch = filterStart ? date >= filterStart : true;
+                const endMatch = filterEnd ? date <= filterEnd : true;
+                if (startMatch && endMatch) {
+                    allRiderData[date].forEach(r => relevantRiderCost += r.wage);
+                }
+            });
 
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
@@ -568,14 +573,16 @@
         }
 
         function clearFilters() { 
-            const dateEl = document.getElementById('filterDate');
+            const startEl = document.getElementById('filterStartDate');
+            const endEl = document.getElementById('filterEndDate');
             const restroEl = document.getElementById('filterRestro');
-            if(dateEl) dateEl.value = ''; 
+            if(startEl) startEl.value = ''; 
+            if(endEl) endEl.value = ''; 
             if(restroEl) restroEl.value = ''; 
             updateDashboard(); 
         }
 
-        // --- PDF GENERATOR (FINAL REFINED) ---
+        // --- PDF GENERATOR ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
