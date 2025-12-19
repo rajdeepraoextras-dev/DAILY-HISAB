@@ -154,12 +154,22 @@
                     <div class="stat-card">
                         <h3>Revenue Growth</h3>
                         <div id="weeklyRevenueGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
-                        <p class="text-muted" id="weeklyRevenuePeriod">Calculating...</p>
+                        <p class="text-muted" id="weeklyRevenuePeriod" style="font-size: 0.75em;">Calculating...</p>
                     </div>
                     <div class="stat-card">
                         <h3>Order Growth</h3>
                         <div id="weeklyOrderGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
-                        <p class="text-muted" id="weeklyOrderPeriod">Calculating...</p>
+                        <p class="text-muted" id="weeklyOrderPeriod" style="font-size: 0.75em;">Calculating...</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>AOV Growth</h3>
+                        <div id="weeklyAovGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
+                        <p class="text-muted" id="weeklyAovPeriod" style="font-size: 0.75em;">Calculating...</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Rev/Day Growth</h3>
+                        <div id="weeklyAvgRevGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
+                        <p class="text-muted" id="weeklyAvgRevPeriod" style="font-size: 0.75em;">Calculating...</p>
                     </div>
                 </div>
             </div>
@@ -247,7 +257,6 @@
             if(el) el.textContent = text;
         };
 
-        // --- DATA PERSISTENCE ---
         async function loadData() {
             showLoader();
             try {
@@ -337,7 +346,6 @@
             hideLoader();
         }
 
-        // --- DASHBOARD LOGIC (UPDATED FOR DATE RANGE) ---
         function updateDashboard() {
             const filterStart = document.getElementById('filterStartDate').value;
             const filterEnd = document.getElementById('filterEndDate').value;
@@ -350,7 +358,6 @@
                 return startMatch && endMatch && restroMatch;
             });
 
-            // Calculate relevant rider costs over the range
             let relevantRiderCost = 0;
             Object.keys(allRiderData).forEach(date => {
                 const startMatch = filterStart ? date >= filterStart : true;
@@ -395,7 +402,6 @@
             safeSetText('projRevenue', `₹${projected.toLocaleString(undefined, {maximumFractionDigits: 0})}`);
         }
 
-        // --- UI RENDERERS ---
         function renderTable(data) {
             const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
             let html = `<table><thead><tr><th>Date</th><th>Restaurant</th><th>Total</th><th>Profit</th><th>Action</th></tr></thead><tbody>`;
@@ -455,7 +461,6 @@
             });
         }
 
-        // --- FORM HELPERS ---
         function calcProfit() {
             const total = parseFloat(document.getElementById('totalAmount').value) || 0;
             const price = parseFloat(document.getElementById('itemPrice').value) || 0;
@@ -493,7 +498,6 @@
             document.getElementById('restroPlatformFees').value = 2;
         });
 
-        // --- RIDER LOGIC ---
         document.getElementById('riderSetupForm').addEventListener('submit', e => {
             e.preventDefault();
             const date = document.getElementById('riderDate').value, count = document.getElementById('numRiders').value;
@@ -522,7 +526,6 @@
             safeSetHTML('riderHistoryContainer', html);
         }
 
-        // --- GROWTH METRICS ---
         function updateGrowthUI(elementId, current, previous, suffix) {
             let growth = previous === 0 ? (current > 0 ? Infinity : 0) : ((current - previous) / previous) * 100;
             let icon = '—', colorClass = 'growth-neutral', text = '0.0%';
@@ -553,23 +556,38 @@
         function calculateWeeklyGrowth(dailyData) {
             const dates = Object.keys(dailyData).sort();
             if (dates.length < 7) return; 
+
             const lastTwoWeeks = dates.slice(-14);
             const thisWeek = lastTwoWeeks.slice(-7);
-            const lastWeek = lastTwoWeeks.slice(0, 7);
+            const lastWeek = lastTwoWeeks.slice(0, lastTwoWeeks.length - 7);
+
             const sumMetrics = (days) => days.reduce((acc, date) => {
                 const day = dailyData[date] || { orders: 0, revenue: 0, profit: 0 };
-                acc.orders += day.orders; acc.revenue += day.revenue; acc.profit += day.profit;
+                acc.orders += day.orders; 
+                acc.revenue += day.revenue; 
+                acc.profit += day.profit;
                 return acc;
             }, { orders: 0, revenue: 0, profit: 0 });
-            
-            const thisWeekMetrics = sumMetrics(thisWeek);
-            const lastWeekMetrics = sumMetrics(lastWeek);
-            updateGrowthUI('weeklyRevenueGrowth', thisWeekMetrics.revenue, lastWeekMetrics.revenue, '₹');
-            updateGrowthUI('weeklyOrderGrowth', thisWeekMetrics.orders, lastWeekMetrics.orders, '');
+
+            const current = sumMetrics(thisWeek);
+            const previous = sumMetrics(lastWeek);
+
+            const currentAOV = current.orders > 0 ? current.revenue / current.orders : 0;
+            const previousAOV = previous.orders > 0 ? previous.revenue / previous.orders : 0;
+            const currentAvgRev = current.revenue / thisWeek.length;
+            const previousAvgRev = previous.revenue / lastWeek.length;
+
+            updateGrowthUI('weeklyRevenueGrowth', current.revenue, previous.revenue, '₹');
+            updateGrowthUI('weeklyOrderGrowth', current.orders, previous.orders, '');
+            updateGrowthUI('weeklyAovGrowth', currentAOV, previousAOV, '₹');
+            updateGrowthUI('weeklyAvgRevGrowth', currentAvgRev, previousAvgRev, '₹');
+
             const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            const periodText = `${formatDate(thisWeek[0])}-${formatDate(thisWeek[thisWeek.length-1])} vs Prev 7d`;
             
-            safeSetText('weeklyRevenuePeriod', `${formatDate(thisWeek[0])} - ${formatDate(thisWeek[thisWeek.length-1])} vs ${formatDate(lastWeek[0])}`);
-            safeSetText('weeklyOrderPeriod', `${formatDate(thisWeek[0])} - ${formatDate(thisWeek[thisWeek.length-1])} vs ${formatDate(lastWeek[0])}`);
+            ['weeklyRevenuePeriod', 'weeklyOrderPeriod', 'weeklyAovPeriod', 'weeklyAvgRevPeriod'].forEach(id => {
+                safeSetText(id, periodText);
+            });
         }
 
         function clearFilters() { 
@@ -582,7 +600,6 @@
             updateDashboard(); 
         }
 
-        // --- PDF GENERATOR ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
@@ -666,7 +683,6 @@
             doc.save(`Payout_${restroName.replace(/\s+/g, '_')}.pdf`);
         }
 
-        // Initialize App
         document.getElementById('date').valueAsDate = new Date();
         document.getElementById('riderDate').valueAsDate = new Date();
         loadData();
