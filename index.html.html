@@ -148,22 +148,6 @@
                 <div id="riderHistoryContainer" style="margin-top: 15px; font-size: 0.9em; color: #555;"></div>
             </div>
 
-            <div class="card" style="border-color: #4a6baf; background-color: #f8f9ff;">
-                <h2 style="color: #4a6baf;">📈 Weekly Growth</h2>
-                <div class="stats" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                    <div class="stat-card">
-                        <h3>Revenue Growth</h3>
-                        <div id="weeklyRevenueGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
-                        <p class="text-muted" id="weeklyRevenuePeriod">This week vs last week</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Order Growth</h3>
-                        <div id="weeklyOrderGrowth" class="growth-neutral" style="font-size: 1.5em; margin: 10px 0;">—</div>
-                        <p class="text-muted" id="weeklyOrderPeriod">This week vs last week</p>
-                    </div>
-                </div>
-            </div>
-
             <div class="card">
                 <h2>📊 Analytics & Filters</h2>
                 <div class="filter-section">
@@ -542,12 +526,15 @@
             updateGrowthUI('weeklyRevenueGrowth', thisWeekMetrics.revenue, lastWeekMetrics.revenue, '₹');
             updateGrowthUI('weeklyOrderGrowth', thisWeekMetrics.orders, lastWeekMetrics.orders, '');
             const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-            document.getElementById('weeklyRevenuePeriod').textContent = `${formatDate(thisWeek[0])} - ${formatDate(thisWeek[thisWeek.length-1])} vs ${formatDate(lastWeek[0])}...`;
+            // Add safety check for thisWeek[0]
+            if (document.getElementById('weeklyRevenuePeriod') && thisWeek.length > 0) {
+                document.getElementById('weeklyRevenuePeriod').textContent = `${formatDate(thisWeek[0])} - ${formatDate(thisWeek[thisWeek.length-1])} vs ${formatDate(lastWeek[0])}...`;
+            }
         }
 
         function clearFilters() { document.getElementById('filterDate').value = ''; document.getElementById('filterRestro').value = ''; updateDashboard(); }
 
-        // --- PDF GENERATOR (UPDATED) ---
+        // --- PDF GENERATOR (IMPROVED LAYOUT) ---
         function generateInvoice() {
             const restroName = document.getElementById('invoiceRestro').value;
             const startDate = document.getElementById('invoiceStart').value;
@@ -559,52 +546,43 @@
             
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            const primaryColor = [255, 87, 34];
-            const darkColor = [44, 62, 80];
+            const primaryColor = [255, 87, 34]; // Khanago Orange
+            const secondaryColor = [44, 62, 80]; // Dark Slate
 
-            // Header Background
-            doc.setFillColor(...darkColor);
-            doc.rect(0, 0, 210, 45, 'F');
+            // 1. TOP HEADER SECTION
+            doc.setFillColor(...secondaryColor);
+            doc.rect(0, 0, 210, 40, 'F');
 
-            // Logo Box
+            // Brand Logo & Name
             doc.setFillColor(...primaryColor);
-            doc.roundedRect(14, 10, 20, 20, 3, 3, 'F');
+            doc.roundedRect(15, 10, 15, 15, 2, 2, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("KN", 18, 23);
+            doc.setFontSize(12);
+            doc.text("KN", 18, 20);
 
-            // App Name
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(22);
-            doc.text("Khanago", 40, 18);
+            doc.setFontSize(24);
+            doc.setFont("helvetica", "bold");
+            doc.text("Khanago", 35, 22);
+
+            // Right-aligned Title
+            doc.setFontSize(16);
+            doc.text("PAYOUT STATEMENT", 195, 22, { align: "right" });
+
+            // 2. RESTAURANT INFO BAR
+            doc.setFillColor(245, 245, 245);
+            doc.rect(0, 40, 210, 25, 'F');
+            
+            doc.setTextColor(...secondaryColor);
             doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text("RESTAURANT PAYOUT STATEMENT", 40, 25);
-
-            // Payout Badge
-            doc.setFillColor(255, 255, 255, 0.1);
-            doc.roundedRect(145, 10, 55, 25, 2, 2, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
-            doc.text("PAYOUT", 150, 22);
-            doc.setFontSize(8);
-            doc.text("System Generated", 150, 28);
-
-            // Restaurant & Period Info
-            doc.setTextColor(...darkColor);
-            doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("RESTAURANT:", 14, 55);
-            doc.setFont("helvetica", "normal");
-            doc.text(restroName.toUpperCase(), 55, 55);
+            doc.text("RESTAURANT", 15, 50);
+            doc.text("PAYOUT PERIOD", 15, 58);
 
-            doc.setFont("helvetica", "bold");
-            doc.text("PAYOUT PERIOD:", 14, 63);
             doc.setFont("helvetica", "normal");
-            doc.text(`${startDate}  to  ${endDate}`, 55, 63);
+            doc.text(":  " + restroName.toUpperCase(), 50, 50);
+            doc.text(":  " + startDate + "  to  " + endDate, 50, 58);
 
-            // Financial Summary Calculation
+            // 3. MAIN ITEMIZED TABLE DATA
             let totalItemPrice = 0, totalPlatFees = 0, totalTransFees = 0, totalComm = 0, totalPayout = 0;
             const tableRows = invoiceData.map(row => {
                 const transFeeAmt = (row.itemPrice * row.transactionFees) / 100;
@@ -617,55 +595,69 @@
                 totalComm += commissionAmt;
                 totalPayout += payout;
 
-                return [row.date, row.itemPrice.toFixed(2), row.restroPlatformFees.toFixed(2), transFeeAmt.toFixed(2), commissionAmt.toFixed(2), payout.toFixed(2)];
+                return [
+                    row.date, 
+                    "Rs " + row.itemPrice.toFixed(2), 
+                    "Rs " + row.restroPlatformFees.toFixed(2), 
+                    "Rs " + transFeeAmt.toFixed(2), 
+                    "Rs " + commissionAmt.toFixed(2), 
+                    "Rs " + payout.toFixed(2)
+                ];
             });
 
-            // Summary Table (Detailed Breakdown)
             doc.autoTable({
-                startY: 70,
-                head: [['Description', 'Amount (Rs)']],
-                body: [
-                    ['Total Item Sales', totalItemPrice.toFixed(2)],
-                    ['(-) Total Restro Platform Fees', `-${totalPlatFees.toFixed(2)}`],
-                    ['(-) Total Transaction Fees', `-${totalTransFees.toFixed(2)}`],
-                    ['(-) Total Commission', `-${totalComm.toFixed(2)}`],
-                    ['NET PAYABLE TO RESTRO', { content: totalPayout.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor } }]
-                ],
-                theme: 'striped',
-                headStyles: { fillColor: [100, 100, 100] },
-                margin: { left: 110 } // Push summary to the right
-            });
-
-            // Section Label
-            doc.setTextColor(...darkColor);
-            doc.setFontSize(12);
-            doc.text("ITEMIZED BREAKDOWN", 14, 115);
-
-            // Main Data Table
-            doc.autoTable({
-                startY: 120,
-                head: [['Date', 'Item Price', 'Plat Fee', 'Trans Fee', 'Comm.', 'Net Payout']],
+                startY: 75,
+                head: [['Date', 'Item Price', 'Platform Fee', 'Trans. Fee', 'Comm.', 'Net Payout']],
                 body: tableRows,
                 theme: 'grid',
-                headStyles: { fillColor: primaryColor, halign: 'center' },
+                headStyles: { fillColor: primaryColor, halign: 'center', fontSize: 10 },
                 columnStyles: { 
-                    0: { halign: 'left' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 
-                    3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right', fontStyle: 'bold' } 
-                }
+                    0: { cellWidth: 30 },
+                    1: { halign: 'right' }, 2: { halign: 'right' }, 
+                    3: { halign: 'right' }, 4: { halign: 'right' }, 
+                    5: { halign: 'right', fontStyle: 'bold' } 
+                },
+                styles: { fontSize: 9 }
             });
 
-            // Footer
-            const finalY = doc.lastAutoTable.finalY + 20;
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Note: This is an electronically generated statement. No signature is required.", 14, finalY);
-            doc.setFontSize(8);
-            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, finalY + 10);
+            // 4. BOTTOM SUMMARY SECTION
+            let finalY = doc.lastAutoTable.finalY + 15;
 
-            doc.save(`Payout_${restroName.replace(/\s+/g, '_')}_${startDate}.pdf`);
+            // Page overflow check
+            if (finalY > 240) { doc.addPage(); finalY = 20; }
+
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("FINANCIAL SUMMARY", 120, finalY);
+            
+            const summaryStartY = finalY + 5;
+            doc.autoTable({
+                startY: summaryStartY,
+                margin: { left: 120 },
+                body: [
+                    ['Total Item Sales', "Rs " + totalItemPrice.toFixed(2)],
+                    ['Total Platform Fees', "(-) Rs " + totalPlatFees.toFixed(2)],
+                    ['Total Transaction Fees', "(-) Rs " + totalTransFees.toFixed(2)],
+                    ['Total Commissions', "(-) Rs " + totalComm.toFixed(2)],
+                    [{ content: 'NET PAYABLE AMOUNT', styles: { fontStyle: 'bold', fillColor: [255, 240, 235] } }, 
+                     { content: "Rs " + totalPayout.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor, fillColor: [255, 240, 235] } }]
+                ],
+                theme: 'plain',
+                styles: { fontSize: 10, cellPadding: 2 },
+                columnStyles: { 0: { cellWidth: 50 }, 1: { halign: 'right' } }
+            });
+
+            // 5. FOOTER
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Disclaimer: This is a system-generated statement. Khanago Sales Tracker Pro.", 15, pageHeight - 15);
+            doc.text("Generated on: " + new Date().toLocaleString(), 15, pageHeight - 10);
+
+            doc.save(`Payout_${restroName.replace(/\s+/g, '_')}.pdf`);
         }
 
-        // Initialize
+        // Initialize App
         document.getElementById('date').valueAsDate = new Date();
         document.getElementById('riderDate').valueAsDate = new Date();
         loadData();
