@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khanago Sales Tracker (Pro)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -355,34 +354,6 @@
             color: white;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-        }
-        
-        .charts-grid-top { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); 
-            gap: 24px; 
-            margin-top: 35px; 
-            margin-bottom: 24px; 
-        }
-        
-        .charts-grid-bottom { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
-            gap: 24px; 
-        }
-        
-        .chart-box { 
-            background: white; 
-            padding: 24px; 
-            border-radius: 14px; 
-            border: 1px solid #e2e8f0; 
-            height: 340px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s ease;
-        }
-        
-        .chart-box:hover {
-            box-shadow: 0 8px 20px rgba(255, 107, 53, 0.12);
         }
         
         #loader { 
@@ -768,20 +739,6 @@
                 </div>
             </div>
 
-            <div class="card">
-                <h2>Daily Riders</h2>
-                <form id="riderSetupForm" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px;">
-                    <div class="form-group"><label>Date</label><input type="date" id="riderDate" required></div>
-                    <div class="form-group"><label>Count</label><input type="number" id="numRiders" min="1" placeholder="0" style="width: 80px;" required></div>
-                    <button type="submit" class="btn">Set Riders</button>
-                </form>
-                <div id="riderInputsContainer"></div>
-                <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                    <h4 style="margin-bottom: 15px; color: #2d3748; font-weight: 600;">Rider Payment History</h4>
-                    <div id="riderHistoryContainer" style="font-size: 0.9em; color: #555;"></div>
-                </div>
-            </div>
-
             <div class="card" style="border-color: #4a6baf; background-color: #f8f9ff;">
                 <h2 style="color: #4a6baf;">📈 Weekly Growth</h2>
                 <div class="stats" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
@@ -845,7 +802,8 @@
                     <div class="stat-card"><h3>Total Revenue</h3><p id="totalSales">₹0</p></div>
                     <div class="stat-card" style="border-color: #ff5722; background: #fffbf9;"><h3 style="color: #ff5722;">Proj. Month Revenue</h3><p id="projRevenue">₹0</p></div>
                     <div class="stat-card"><h3>Gross Profit</h3><p id="totalGrossProfit">₹0</p></div>
-                    <div class="stat-card"><h3>Rider Cost</h3><p id="totalRiderCost" style="color: #c62828;">₹0</p></div>
+                    <div class="stat-card" style="border-color: #1565c0; background: #e3f2fd;"><h3 style="color: #1565c0;">Main Profit</h3><p id="mainProfit" style="color: #1565c0;">₹0</p></div>
+                    <div class="stat-card"><h3>Operational Cost</h3><p id="totalOperationalCost" style="color: #c62828;">₹0</p></div>
                     <div class="stat-card"><h3>Net Profit</h3><p id="netProfit" style="color: #2e7d32;">₹0</p></div>
                     <div class="stat-card"><h3>Net Margin</h3><p id="netMargin" style="color: #2e7d32;">0%</p></div>
                     <div class="stat-card"><h3>Avg Orders/Day</h3><p id="avgOrdersPerDay">0</p></div>
@@ -855,11 +813,6 @@
                     <div class="stat-card"><h3>Daily Order Growth</h3><div id="growthOrders" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Rev Growth</h3><div id="growthRevenue" class="growth-neutral">—</div></div>
                     <div class="stat-card"><h3>Daily Profit Growth</h3><div id="growthProfit" class="growth-neutral">—</div></div>
-                </div>
-
-                <div class="charts-grid-top">
-                    <div class="chart-box"><canvas id="ordersChart"></canvas></div>
-                    <div class="chart-box"><canvas id="revenueChart"></canvas></div>
                 </div>
 
                 <h3 style="margin-top: 40px;">Detailed Records</h3>
@@ -878,6 +831,7 @@
         let allSalesData = [];
         let allRiderData = {};
         let allRiderReports = [];
+        let operationalCostData = [];
         
         // Default WhatsApp number for sending reports
         const defaultWhatsAppNumber = '917388322574';
@@ -887,7 +841,6 @@
             document.getElementById('riderWhatsApp').value = defaultWhatsAppNumber;
         }
         
-        let ordersChartInstance = null, revenueChartInstance = null;
         let isAuthenticated = false;
 
         // Check session on page load
@@ -984,6 +937,7 @@
                     riderName: s["Rider Name"] || '',
                     totalAmount: s["Total Amount"],
                     itemPrice: s["Item Price"],
+                    deliveryCharge: s["Delivery Charge"] || 0,
                     transactionFees: s["Transaction Fees %"],
                     commission: s["Commission %"],
                     customerPlatformFees: s["Customer Platform Fees"],
@@ -991,14 +945,11 @@
                     profit: s.Profit
                 }));
 
-                const { data: riders, error: rErr } = await _supabase.from('riders').select('*');
-                if (rErr) throw rErr;
-
-                allRiderData = riders.reduce((acc, r) => {
-                    if (!acc[r.Date]) acc[r.Date] = [];
-                    acc[r.Date].push({ name: r["Rider Name"], wage: r.WAGE, id: r.id });
-                    return acc;
-                }, {});
+                // Load operational cost data from EXEC MANAGER LEVEL & RIDER EXPENSE view
+                const { data: operationalData, error: opErr } = await _supabase.from('EXEC MANAGER LEVEL & RIDER EXPENSE').select('*');
+                if (opErr) console.error('Operational cost error:', opErr);
+                
+                operationalCostData = operationalData || [];
 
                 // Load rider reports history
                 const { data: reports, error: repErr } = await _supabase.from('rider_reports').select('*').order('downloaded_at', { ascending: false });
@@ -1008,7 +959,6 @@
                 }
 
                 updateDashboard();
-                renderRiderHistoryUI();
             } catch (e) {
                 console.error(e);
                 alert("Supabase Error: " + e.message);
@@ -1151,25 +1101,24 @@
                 return startMatch && endMatch && restroMatch;
             });
 
-            let relevantRiderCost = 0;
-            Object.keys(allRiderData).forEach(date => {
-                const startMatch = filterStart ? date >= filterStart : true;
-                const endMatch = filterEnd ? date <= filterEnd : true;
-                if (startMatch && endMatch) {
-                    allRiderData[date].forEach(r => relevantRiderCost += r.wage);
-                }
+            // Calculate operational cost from EXEC MANAGER LEVEL & RIDER EXPENSE view
+            let operationalCost = 0;
+            operationalCostData.forEach(item => {
+                operationalCost += parseFloat(item.amount) || 0;
             });
 
             const totalRevenue = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
             const totalGross = filteredSales.reduce((sum, s) => sum + s.profit, 0);
-            const netProfit = totalGross - relevantRiderCost;
+            const mainProfit = filteredSales.reduce((sum, s) => sum + (s.totalAmount - s.itemPrice - (s.deliveryCharge || 0)), 0);
+            const netProfit = totalGross - operationalCost;
             const entryCount = filteredSales.length;
             const uniqueDates = new Set(filteredSales.map(s => s.date)).size || 1;
             
             safeSetText('totalEntries', entryCount);
             safeSetText('totalSales', `₹${totalRevenue.toLocaleString()}`);
             safeSetText('totalGrossProfit', `₹${totalGross.toLocaleString()}`);
-            safeSetText('totalRiderCost', `₹${relevantRiderCost.toLocaleString()}`);
+            safeSetText('mainProfit', `₹${mainProfit.toLocaleString()}`);
+            safeSetText('totalOperationalCost', `₹${operationalCost.toLocaleString()}`);
             safeSetText('netProfit', `₹${netProfit.toLocaleString()}`);
             safeSetText('avgOrdersPerDay', (entryCount / uniqueDates).toFixed(1));
             safeSetText('avgRevenuePerDay', `₹${(totalRevenue / uniqueDates).toFixed(0)}`);
@@ -1180,7 +1129,6 @@
             calculateGrowthMetrics(filteredSales);
             calculateMonthlyProjection(allSalesData);
             renderTable(filteredSales);
-            renderCharts(filteredSales);
         }
 
         function calculateMonthlyProjection(data) {
@@ -1212,84 +1160,6 @@
                 html += `</tr>`;
             });
             safeSetHTML('tableContainer', html + '</tbody></table>');
-        }
-
-        function formatChartDate(dateString) {
-            const parts = dateString.split('-');
-            const localDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
-            return `${localDate.toLocaleDateString('en-US', { weekday: 'short' })} ${localDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`;
-        }
-
-        function renderCharts(data) {
-            const ordersChartEl = document.getElementById('ordersChart');
-            const revenueChartEl = document.getElementById('revenueChart');
-
-            if(!ordersChartEl || !revenueChartEl) return;
-
-            const ctxOrders = ordersChartEl.getContext('2d');
-            const ctxRevenue = revenueChartEl.getContext('2d');
-            const dailyOrderCount = {}, dailyRevenue = {}; 
-
-            data.forEach(item => {
-                dailyOrderCount[item.date] = (dailyOrderCount[item.date] || 0) + 1;
-                dailyRevenue[item.date] = (dailyRevenue[item.date] || 0) + item.totalAmount;
-            });
-
-            const sortedDates = Object.keys(dailyOrderCount).sort();
-
-            if(ordersChartInstance) ordersChartInstance.destroy();
-            ordersChartInstance = new Chart(ctxOrders, {
-                type: 'bar',
-                data: { 
-                    labels: sortedDates.map(formatChartDate), 
-                    datasets: [{ 
-                        label: 'Daily Orders', 
-                        data: sortedDates.map(d => dailyOrderCount[d]), 
-                        backgroundColor: '#ff6b35', 
-                        borderRadius: 6,
-                        borderWidth: 0
-                    }] 
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: {display:false}, 
-                        title: {display:true, text:'Daily Orders', font: {size: 16, weight: 'bold'}, color: '#2d3748'} 
-                    },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-
-            if(revenueChartInstance) revenueChartInstance.destroy();
-            revenueChartInstance = new Chart(ctxRevenue, {
-                type: 'bar',
-                data: { 
-                    labels: sortedDates.map(formatChartDate), 
-                    datasets: [{ 
-                        label: 'Daily Revenue (₹)', 
-                        data: sortedDates.map(d => dailyRevenue[d]), 
-                        backgroundColor: '#ff8c42', 
-                        borderRadius: 6,
-                        borderWidth: 0
-                    }] 
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: {display:false}, 
-                        title: {display:true, text:'Daily Revenue', font: {size: 16, weight: 'bold'}, color: '#2d3748'} 
-                    },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
         }
 
         function calcProfit() {
@@ -1329,64 +1199,6 @@
             document.getElementById('commission').value = 0; 
             document.getElementById('restroPlatformFees').value = 2;
         });
-
-        document.getElementById('riderSetupForm').addEventListener('submit', e => {
-            e.preventDefault();
-            const date = document.getElementById('riderDate').value, count = document.getElementById('numRiders').value;
-            let html = `<div style="margin:15px 0; background:white; padding:10px; border:1px solid #ddd;"><h4>Enter ${count} Riders for ${date}</h4>`;
-            for(let i=0; i<count; i++) {
-                html += `<div style="display:flex; gap:10px; margin-bottom:5px;"><input type="text" placeholder="Name" class="r-name" style="flex:2"><input type="number" placeholder="Wage" class="r-wage" style="flex:1"></div>`;
-            }
-            html += `<button class="btn" onclick="handleSaveRiders('${date}')">Save</button> <button class="btn btn-clear" onclick="this.parentNode.remove()">Cancel</button></div>`;
-            safeSetHTML('riderInputsContainer', html);
-        });
-
-        function handleSaveRiders(date) {
-            const names = document.querySelectorAll('.r-name'), wages = document.querySelectorAll('.r-wage');
-            let riders = [];
-            names.forEach((n,i) => { if(n.value && wages[i].value) riders.push({name:n.value, wage:parseFloat(wages[i].value)}) });
-            if(riders.length) { saveRiders(date, riders); safeSetHTML('riderInputsContainer', ''); }
-        }
-
-        function renderRiderHistoryUI() {
-            if(Object.keys(allRiderData).length === 0) { 
-                safeSetHTML('riderHistoryContainer', '<p style="color: #a0aec0;">No rider payments recorded yet.</p>'); 
-                return; 
-            }
-            
-            let html = '<div style="max-height: 300px; overflow-y: auto;">';
-            html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">';
-            html += '<thead><tr style="background: #f7fafc;"><th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">Date</th><th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">Rider Name</th><th style="padding: 10px; text-align: right; border-bottom: 2px solid #e2e8f0;">Amount Paid</th><th style="padding: 10px; text-align: center; border-bottom: 2px solid #e2e8f0;">Action</th></tr></thead>';
-            html += '<tbody>';
-            
-            // Sort dates in descending order
-            const sortedDates = Object.keys(allRiderData).sort().reverse();
-            
-            sortedDates.forEach(date => {
-                const riders = allRiderData[date];
-                const dateTotal = riders.reduce((sum, r) => sum + r.wage, 0);
-                
-                // Date header row
-                html += `<tr style="background: #fff7ed;">`;
-                html += `<td colspan="2" style="padding: 10px; font-weight: 700; color: #c2410c;">${date}</td>`;
-                html += `<td style="padding: 10px; text-align: right; font-weight: 700; color: #c2410c;">₹${dateTotal.toFixed(2)}</td>`;
-                html += `<td style="padding: 10px; text-align: center;"><button onclick="deleteRiders('${date}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em;">Delete All</button></td>`;
-                html += `</tr>`;
-                
-                // Individual rider rows
-                riders.forEach(rider => {
-                    html += `<tr style="border-bottom: 1px solid #e2e8f0;">`;
-                    html += `<td style="padding: 8px 10px; padding-left: 25px; color: #718096;"></td>`;
-                    html += `<td style="padding: 8px 10px;">${rider.name}</td>`;
-                    html += `<td style="padding: 8px 10px; text-align: right; font-weight: 600;">₹${rider.wage.toFixed(2)}</td>`;
-                    html += `<td style="padding: 8px 10px; text-align: center;"></td>`;
-                    html += `</tr>`;
-                });
-            });
-            
-            html += '</tbody></table></div>';
-            safeSetHTML('riderHistoryContainer', html);
-        }
 
         function updateGrowthUI(elementId, current, previous, suffix) {
             let growth = previous === 0 ? (current > 0 ? Infinity : 0) : ((current - previous) / previous) * 100;
@@ -1950,7 +1762,6 @@
 
         document.getElementById('date').valueAsDate = new Date();
         document.getElementById('closingDate').valueAsDate = new Date();
-        document.getElementById('riderDate').valueAsDate = new Date();
         // loadData() is now called after authentication
     </script>
 </body>
